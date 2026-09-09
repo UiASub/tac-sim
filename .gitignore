@@ -1,0 +1,55 @@
+# Unity generated data (also supports a Unity project in a subdirectory).
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+**/[Mm]emoryCaptures/
+**/[Rr]ecordings/
+**/Assets/AssetStoreTools*
+
+# Generated IDE projects and local editor state.
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity crash reports and local build outputs.
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+crashlytics-build.properties
+
+# Blender backups; keep source .blend files and exported assets tracked.
+*.blend[0-9]*
+*.blend@
+
+# OS files and local secrets.
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.env
+.env.*
+!.env.example
+
+# Keep Assets (including .meta files), Packages, and ProjectSettings tracked.
