@@ -1,0 +1,4 @@
+{
+  "name": "TacSim.Runtime",
+  "references": ["Unity.InputSystem"]
+}

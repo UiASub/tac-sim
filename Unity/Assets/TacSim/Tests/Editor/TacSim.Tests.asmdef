@@ -1,0 +1,6 @@
+{
+  "name": "TacSim.Tests",
+  "references": ["TacSim.Runtime"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

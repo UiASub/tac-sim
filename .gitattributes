@@ -1,0 +1,17 @@
+* text=auto
+*.cs text eol=lf
+*.json text eol=lf
+*.asmdef text eol=lf
+*.md text eol=lf
+
+# Unity serializes empty YAML values with a trailing space.
+*.unity text eol=lf whitespace=-blank-at-eol
+*.prefab text eol=lf whitespace=-blank-at-eol
+*.mat text eol=lf whitespace=-blank-at-eol
+*.asset text eol=lf whitespace=-blank-at-eol
+*.meta text eol=lf whitespace=-blank-at-eol
+*.wlt text eol=lf whitespace=-blank-at-eol
+
+*.png binary
+*.fbx binary
+*.blend binary
