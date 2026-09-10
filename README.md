@@ -24,7 +24,9 @@ Losing window focus cuts thrust. Re-arm after returning to the window. Reset res
 
 ## Build and verify
 
-Use **TAC → Build Linux player** in the Editor. Output: `Unity/Builds/Linux/TacSim.x86_64` (ignored by git). Launch the executable normally for piloting.
+Use **TAC → Build Linux player** in the Editor. Output: `Unity/Builds/Linux/TacSim.x86_64` (ignored by git). Run `./run.sh` from the repository root for piloting. The launcher opens fullscreen and selects native Wayland when running on a Wayland desktop, including niri. Windowed mode is also resizable.
+
+The earlier fixed-size XWayland window floated under niri and did not provide usable input in this setup. Native Wayland fullscreen was verified with keyboard movement and camera switching. If launching the executable directly on Wayland, pass `-force-wayland -screen-fullscreen 1`.
 
 Command-line examples from the repository root, with the Editor at its default Linux installation path:
 
@@ -39,7 +41,7 @@ UNITY_EDITOR=/home/dl/Unity/Hub/Editor/6000.3.23f1/Editor/Unity
   -projectPath "$PWD/Unity" -runTests -testPlatform EditMode \
   -testResults /tmp/tac-tests.xml -logFile /tmp/tac-tests.log
 
-Unity/Builds/Linux/TacSim.x86_64 -smokeTest \
+./run.sh -smokeTest \
   -captureScreenshot /tmp/tac-pool.png -logFile /tmp/tac-player.log
 ```
 

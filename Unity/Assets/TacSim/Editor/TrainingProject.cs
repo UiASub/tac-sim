@@ -128,7 +128,8 @@ namespace TacSim.Editor
             PlayerSettings.productName = "TAC ROV Training";
             PlayerSettings.defaultScreenWidth = 1280;
             PlayerSettings.defaultScreenHeight = 720;
-            PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+            PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
+            PlayerSettings.resizableWindow = true;
             PlayerSettings.runInBackground = true;
             EditorSettings.serializationMode = SerializationMode.ForceText;
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
