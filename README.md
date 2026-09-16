@@ -2,6 +2,20 @@
 
 A Unity pool prototype for TAC Challenge ROV pilot practice. The vehicle is a four-DOF, generic eight-thruster ROV: forward/back, strafe, vertical movement, and yaw, with pitch and roll locked. Buoyancy, drag, and thruster geometry are configurable. The landing pad is a practice target; official mission geometry and scoring are not implemented yet.
 
+## Malstrøm in the simulator
+
+Actual Unity gameplay captures of both model variants, using the same front
+inspection view and Coastal Water preset. Camera filters add colour grading,
+bloom, grain and vignette; with filters off, scene lighting and water fog remain.
+
+| Model | Camera filters off | Camera filters on |
+| --- | --- | --- |
+| Low / simplified | ![Malstrøm low-detail ROV in the pool, camera filters off](docs/screenshots/malstrom-low-filters-off.png) | ![Malstrøm low-detail ROV in the pool, camera filters on](docs/screenshots/malstrom-low-filters-on.png) |
+| High / full | ![Malstrøm high-detail ROV in the pool, camera filters off](docs/screenshots/malstrom-high-filters-off.png) | ![Malstrøm high-detail ROV in the pool, camera filters on](docs/screenshots/malstrom-high-filters-on.png) |
+
+Click an image for full resolution. **M** switches model detail; **P** toggles
+camera filters. See [model notes](docs/ROV.md) for dimensions and capture instructions.
+
 ## Open and run
 
 On Arch/CachyOS, start with `./install.sh` (or `./install.sh --check` for a read-only
