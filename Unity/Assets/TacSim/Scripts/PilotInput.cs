@@ -28,6 +28,12 @@ namespace TacSim
                 if (k.escapeKey.wasPressedThisFrame) vehicle.SetArmed(!vehicle.Armed);
                 if (k.vKey.wasPressedThisFrame) view.CycleCamera();
                 if (k.lKey.wasPressedThisFrame) ToggleLights();
+                if (view.appearance != null)
+                {
+                    if (k.hKey.wasPressedThisFrame) view.appearance.MenuOpen = !view.appearance.MenuOpen;
+                    if (k.fKey.wasPressedThisFrame) view.appearance.CyclePreset();
+                    if (k.pKey.wasPressedThisFrame) view.appearance.SetFilters(!view.appearance.FiltersEnabled);
+                }
             }
             Gamepad g = Gamepad.current;
             if (g != null)
@@ -40,13 +46,19 @@ namespace TacSim
                 if (g.startButton.wasPressedThisFrame) vehicle.ResetVehicle();
                 if (g.buttonEast.wasPressedThisFrame) vehicle.SetArmed(!vehicle.Armed);
                 if (g.buttonNorth.wasPressedThisFrame) ToggleLights();
+                if (g.rightShoulder.wasPressedThisFrame && view.appearance != null) view.appearance.CyclePreset();
             }
             vehicle.SetCommand(move, turn);
         }
 
         static float Axis(bool positive, bool negative) => (positive ? 1 : 0) - (negative ? 1 : 0);
         void ToggleLights() { foreach (Light light in headlights) light.enabled = !light.enabled; }
-        void OnApplicationFocus(bool focused) { if (!focused) vehicle.SetArmed(false); }
+        void OnApplicationFocus(bool focused)
+        {
+            // The opt-in smoke runner owns commands while ExternalControl is active.
+            // Switching desktop focus must not inject a pilot command into that run.
+            if (!focused && !ExternalControl) vehicle.SetArmed(false);
+        }
         void OnDisable() { if (vehicle != null && vehicle.Body != null) vehicle.SetCommand(Vector3.zero, Vector3.zero); }
     }
 }

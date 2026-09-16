@@ -35,10 +35,6 @@ namespace TacSim.Editor
             Box("Start wall", pool.transform, new Vector3(0, -2.5f, -12.2f), new Vector3(16, 5.4f, 0.4f), white);
             for (int x = -6; x <= 6; x += 3)
                 Box("Lane", pool.transform, new Vector3(x, -4.985f, 0), new Vector3(0.075f, 0.02f, 23), teal, false);
-            for (int z = -10; z <= 10; z += 2)
-                Box("Distance grid", pool.transform, new Vector3(0, -4.98f, z), new Vector3(15.9f, 0.01f, 0.025f), teal, false);
-            for (int y = -4; y <= -1; y++)
-                Box("Wall depth stripe", pool.transform, new Vector3(0, y, 11.985f), new Vector3(16, 0.055f, 0.02f), teal, false);
 
             var dock = new GameObject("Practice landing pad • not competition scoring");
             dock.transform.position = new Vector3(0, -4.8f, 4);
@@ -122,6 +118,7 @@ namespace TacSim.Editor
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = camera.backgroundColor;
             RenderSettings.fogDensity = 0.045f;
+            PoolEnvironment.Build(pool.transform, dock.transform, camera, sun, view);
             Time.fixedDeltaTime = 0.02f;
 
             PlayerSettings.companyName = "UiASub";
@@ -192,6 +189,12 @@ namespace TacSim.Editor
             });
             if (report.summary.result != BuildResult.Succeeded)
                 throw new System.Exception($"Linux build failed: {report.summary.result}");
+            foreach (string guid in AssetDatabase.FindAssets("t:Shader", new[] { "Assets/TacSim" }))
+            {
+                Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(AssetDatabase.GUIDToAssetPath(guid));
+                if (ShaderUtil.ShaderHasError(shader))
+                    throw new System.Exception($"Shader compilation failed: {shader.name}");
+            }
             Debug.Log("TAC_BUILD_SUCCEEDED");
         }
     }

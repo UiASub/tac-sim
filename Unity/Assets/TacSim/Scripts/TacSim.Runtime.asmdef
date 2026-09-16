@@ -1,4 +1,4 @@
 {
   "name": "TacSim.Runtime",
-  "references": ["Unity.InputSystem"]
+  "references": ["Unity.InputSystem", "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime"]
 }
