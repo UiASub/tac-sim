@@ -48,7 +48,7 @@ the simulator if you want the Unity and OpenCV windows side by side.
 
 ## Build and verify
 
-Use **TAC → Build Linux player** in the Editor. Output: `Unity/Builds/Linux/TacSim.x86_64` (ignored by git). Run `./run.sh` from the repository root for piloting. The launcher opens fullscreen and selects native Wayland when running on a Wayland desktop, including niri. Windowed mode is also resizable.
+Use **TAC → Build Linux player** in the Editor. Output: `Unity/Builds/Linux/TacSim.x86_64` (ignored by git). Run `./run.sh` from the repository root for piloting. The launcher opens fullscreen at the desktop aspect ratio, capped at 1280 pixels wide for rendering performance, and selects native Wayland when available. It refuses to run a player older than the Unity project, preventing stale builds from silently omitting features such as the water filters. Explicit display arguments take precedence; for a resizable 1280×720 window, use `./run.sh -screen-fullscreen 0 -screen-width 1280 -screen-height 720`.
 
 The earlier fixed-size XWayland window floated under niri and did not provide usable input in this setup. Native Wayland fullscreen was verified with keyboard movement and camera switching. If launching the executable directly on Wayland, pass `-force-wayland -screen-fullscreen 1`.
 

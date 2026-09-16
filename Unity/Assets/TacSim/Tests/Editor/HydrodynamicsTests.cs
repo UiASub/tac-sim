@@ -88,5 +88,16 @@ namespace TacSim.Tests
             Assert.That(port, Is.EqualTo(9000));
             Assert.That(AutomationServer.TryGetPort(new[] { "player", "-automationPort", "70000" }, out _), Is.False);
         }
+
+        [Test]
+        public void LaunchResolutionHonoursExplicitWindowAndSize()
+        {
+            Assert.That(LaunchDisplay.ShouldUseDefaultResolution(new[] { "player", "-screen-fullscreen", "1" }), Is.True);
+            Assert.That(LaunchDisplay.ShouldUseDefaultResolution(new[] { "player", "-screen-fullscreen", "0" }), Is.False);
+            Assert.That(LaunchDisplay.ShouldUseDefaultResolution(new[] { "player", "-screen-width", "960" }), Is.False);
+            Assert.That(LaunchDisplay.ShouldUseDefaultResolution(new[] { "player", "-screen-height", "540" }), Is.False);
+            Assert.That(LaunchDisplay.DefaultResolution(1707, 1067), Is.EqualTo(new Vector2Int(1280, 800)));
+            Assert.That(LaunchDisplay.DefaultResolution(1024, 768), Is.EqualTo(new Vector2Int(1024, 768)));
+        }
     }
 }

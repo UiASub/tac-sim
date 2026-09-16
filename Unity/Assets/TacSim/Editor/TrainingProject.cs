@@ -195,6 +195,10 @@ namespace TacSim.Editor
                 if (ShaderUtil.ShaderHasError(shader))
                     throw new System.Exception($"Shader compilation failed: {shader.name}");
             }
+            const string marker = "Builds/Linux/.source-build-time";
+            File.WriteAllText(marker, System.DateTime.UtcNow.ToString("O"));
+            // Unity may flush unchanged ProjectSettings just after this callback returns.
+            File.SetLastWriteTimeUtc(marker, System.DateTime.UtcNow.AddSeconds(1));
             Debug.Log("TAC_BUILD_SUCCEEDED");
         }
     }
