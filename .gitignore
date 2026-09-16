@@ -56,3 +56,10 @@ __pycache__/
 *.py[cod]
 
 # Keep Assets (including .meta files), Packages, and ProjectSettings tracked.
+
+# Large Drive-backed payloads; their manifest and Unity identities remain in Git.
+/external-assets/
+/.asset-state.json
+/Unity/Assets/External/**
+!/Unity/Assets/External/**/
+!/Unity/Assets/External/**/*.meta

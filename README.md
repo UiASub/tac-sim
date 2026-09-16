@@ -4,6 +4,11 @@ A Unity pool prototype for TAC Challenge ROV pilot practice. The vehicle is a fo
 
 ## Open and run
 
+On Arch/CachyOS, start with `./install.sh` (or `./install.sh --check` for a read-only
+inventory). See [setup and shared Drive assets](docs/SETUP.md) for browser
+authorization, optional source downloads, publishing assets, and building.
+`./run.sh` verifies/downloads pinned runtime assets before its player-freshness check.
+
 Use **Unity 6000.3.23f1 LTS**. In Unity Hub, add the `Unity/` directory as a project. Open `Assets/TacSim/Scenes/TrainingPool.unity` and press Play.
 
 The project uses URP 17.3.0 and the Input System. The training basin includes tiled surfaces, animated water and caustics, suspended particles, underwater lights, poolside railings, a ladder, service pipework, depth markings, and collision-enabled practice hoops. Geometry, materials, and tile textures are generated locally and remain editable. Blender is reserved for detailed reference-based assets.

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+"$project_dir/assets.sh" fetch
 player="$project_dir/Unity/Builds/Linux/TacSim.x86_64"
 build_marker="$project_dir/Unity/Builds/Linux/.source-build-time"
 if [[ ! -x "$player" ]]; then
