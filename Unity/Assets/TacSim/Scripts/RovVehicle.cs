@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace TacSim
@@ -35,9 +36,13 @@ namespace TacSim
         public float Throttle { get; private set; }
         public Vector3 TranslationCommand { get; private set; }
         public Vector3 RotationCommand { get; private set; }
+        public bool IsColliding => contacts.Count > 0;
+        public float CollisionForce { get; private set; }
+        public float PeakCollisionForce { get; private set; }
         Vector3 spawnPosition;
         Quaternion spawnRotation;
         float[] forces;
+        readonly HashSet<int> contacts = new();
 
         void Awake()
         {
@@ -80,7 +85,31 @@ namespace TacSim
             Array.Clear(forces, 0, forces.Length);
             SetCommand(Vector3.zero, Vector3.zero);
             Throttle = 0;
+            contacts.Clear();
+            CollisionForce = 0;
+            PeakCollisionForce = 0;
             Armed = true;
+        }
+
+        void OnCollisionEnter(Collision collision) => RecordCollision(collision);
+        void OnCollisionStay(Collision collision) => RecordCollision(collision);
+
+        void OnCollisionExit(Collision collision)
+        {
+            contacts.Remove(collision.collider.GetInstanceID());
+            if (contacts.Count == 0) CollisionForce = 0;
+        }
+
+        void RecordCollision(Collision collision)
+        {
+            contacts.Add(collision.collider.GetInstanceID());
+            CollisionForce = CollisionForceFromImpulse(collision.impulse.magnitude, Time.fixedDeltaTime);
+            PeakCollisionForce = Mathf.Max(PeakCollisionForce, CollisionForce);
+        }
+
+        public static float CollisionForceFromImpulse(float impulse, float fixedDeltaTime)
+        {
+            return fixedDeltaTime > 0 ? Mathf.Max(0, impulse) / fixedDeltaTime : 0;
         }
 
         // Drag opposes motion relative to the water, not motion relative to the pool.

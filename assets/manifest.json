@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "drive_folder_id": "1B5OrHamwqt0KdJ6uWRPCLM4TvGYfliJ1",
+  "files": [
+    {
+      "group": "source",
+      "path": "ROV/malstrom-high.blend",
+      "sha256": "fd3fcc6832b3eafef4988cfcec9596da5b173da7b8fae6afafa6588263504d78",
+      "size": 50995919
+    },
+    {
+      "group": "source",
+      "path": "ROV/malstrom-low.blend",
+      "sha256": "cbbf9ec60dcc6363af8e286b11a4d7ebc487d034ca57dfc0fd5d7e51b46be7c6",
+      "size": 24188838
+    },
+    {
+      "group": "runtime",
+      "path": "ROV/malstrom-low.fbx",
+      "sha256": "e1c569bb3a41b5707dfea91d4d769cd74c59339c17eb389cca5783f1b02a89a8",
+      "size": 60337564
+    },
+    {
+      "group": "runtime",
+      "path": "ROV/malstrom-high.fbx",
+      "sha256": "055fe4347799aa67002cc88a88725b629c94c4dc1523e16f037d8fa424f16105",
+      "size": 99358332
+    }
+  ]
+}

@@ -24,6 +24,20 @@ namespace TacSim
             vehicle.ResetVehicle();
             input.SendMessage("OnApplicationFocus", false);
             if (!Check(vehicle.Armed, "external check ignores desktop focus")) yield break;
+            var visuals = vehicle.GetComponent<RovVisuals>();
+            if (!Check(visuals != null && visuals.lowModel != null && visuals.highModel != null,
+                "both Malstrom variants present")) yield break;
+            Vector3 beforeSwitch = vehicle.Body.position;
+            Vector3 colliderSize = vehicle.GetComponent<BoxCollider>().size;
+            visuals.SetHighDetail(true);
+            if (!Check(visuals.HighDetail && vehicle.Body.position == beforeSwitch
+                && vehicle.GetComponent<BoxCollider>().size == colliderSize, "high detail preserves physics")) yield break;
+            if (!Check(Vector3.Distance(visuals.ActiveBounds.size, colliderSize) < 0.01f,
+                "high model upright and true scale")) yield break;
+            visuals.SetHighDetail(false);
+            if (!Check(!visuals.HighDetail, "low detail switch")) yield break;
+            if (!Check(Vector3.Distance(visuals.ActiveBounds.size, colliderSize) < 0.01f,
+                "low model upright and true scale")) yield break;
             foreach (Renderer renderer in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
             foreach (Material material in renderer.sharedMaterials)
             {
@@ -99,6 +113,33 @@ namespace TacSim
                 appearance.SetCaustics(true);
                 appearance.SetFilters(true);
                 appearance.ApplyPreset(0);
+
+                int modelCaptures = Array.IndexOf(args, "-captureModels");
+                if (modelCaptures >= 0 && modelCaptures + 1 < args.Length)
+                {
+                    string folder = args[modelCaptures + 1];
+                    Directory.CreateDirectory(folder);
+                    vehicle.ResetVehicle();
+                    vehicle.SetArmed(false);
+                    view.SetMode(0);
+                    view.ModelInspection = true;
+                    appearance.ApplyPreset(1);
+                    for (int detail = 0; detail < 2; detail++)
+                    for (int filters = 0; filters < 2; filters++)
+                    {
+                        visuals.SetHighDetail(detail == 1);
+                        appearance.SetFilters(filters == 1);
+                        yield return new WaitForSeconds(0.75f);
+                        yield return new WaitForEndOfFrame();
+                        ScreenCapture.CaptureScreenshot(Path.Combine(folder,
+                            $"malstrom-{(detail == 1 ? "high" : "low")}-filters-{(filters == 1 ? "on" : "off")}.png"));
+                        yield return new WaitForSeconds(0.5f);
+                    }
+                    visuals.SetHighDetail(false);
+                    view.ModelInspection = false;
+                    appearance.ApplyPreset(0);
+                    appearance.SetFilters(true);
+                }
 
                 int captures = Array.IndexOf(args, "-capturePresets");
                 if (captures >= 0 && captures + 1 < args.Length)

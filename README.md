@@ -4,6 +4,19 @@ A Unity pool prototype for TAC Challenge ROV pilot practice. The vehicle is a fo
 
 ## Open and run
 
+On Arch/CachyOS, start with `./install.sh` (or `./install.sh --check` for a read-only
+inventory). See [setup and shared Drive assets](docs/SETUP.md) for browser
+authorization, optional source downloads, publishing assets, and building.
+`./run.sh` checks the latest runtime release hash on Drive and downloads changes
+before its player-freshness check. Explicit offline use: `TAC_ASSETS_OFFLINE=1 ./run.sh`.
+
+The supplied **Malstrøm ROV** is available in low/simplified and high/full detail.
+Use **M**, the model button, or gamepad Select to toggle; low is the default.
+Both share a true-scale collision box and four-DOF physics. The supplied simplified
+CAD model is still approximately 1.46 million triangles (full: 2.52 million), not a
+game-optimized low-poly model. Mass, drag and thruster mixing remain prototype values.
+See [model notes and screenshots](docs/ROV.md).
+
 Use **Unity 6000.3.23f1 LTS**. In Unity Hub, add the `Unity/` directory as a project. Open `Assets/TacSim/Scenes/TrainingPool.unity` and press Play.
 
 The project uses URP 17.3.0 and the Input System. The training basin includes tiled surfaces, animated water and caustics, suspended particles, underwater lights, poolside railings, a ladder, service pipework, depth markings, and collision-enabled practice hoops. Geometry, materials, and tile textures are generated locally and remain editable. Blender is reserved for detailed reference-based assets.
@@ -13,8 +26,10 @@ The project uses URP 17.3.0 and the Input System. The training basin includes ti
 | Forward/back, strafe | W/S, A/D | Left stick |
 | Ascend/descend | Space / Left Ctrl | Right / left trigger |
 | Yaw | Q/E | Right stick X |
+| Precision movement (35%) | Hold Shift | Hold left shoulder |
 | Cycle chase, forward, downward view | V | South / A |
 | Toggle headlights | L | North / Y |
+| Toggle low/high model detail | M or model button | Select / View |
 | Cut thrust / re-arm | Escape | East / B |
 | Reset vehicle | R | Start |
 | Cycle water preset | F | Right shoulder |
@@ -29,9 +44,25 @@ These are artistic training conditions, not calibrated visibility measurements o
 
 Losing window focus cuts thrust. Re-arm after returning to the window. Reset restores the initial pose, clears velocity and commands, and re-arms the vehicle. Quit the standalone window through the window manager.
 
+## Automation API and OpenCV demo
+
+Launch the built player with `./run.sh -automationPort 8765` to enable the
+loopback-only JSON API. It exposes four-DOF commands, pose and velocity,
+arm/reset state, depth and throttle, current collision/contact force, peak force
+since reset, and optional JPEG observations from any camera. See
+[the protocol reference](docs/AUTOMATION.md) for the request schema and safety
+behavior.
+
+An accompanying `uv` project lives in `automation-demo/`, outside the Unity
+project. After starting the player, run `cd automation-demo && uv sync && uv run
+demo.py`. It displays observations and telemetry with OpenCV and can toggle a
+small yellow-target vision controller with `M`; its client class is intended as
+a starting point for a learned policy. Add `-screen-fullscreen 0` when launching
+the simulator if you want the Unity and OpenCV windows side by side.
+
 ## Build and verify
 
-Use **TAC → Build Linux player** in the Editor. Output: `Unity/Builds/Linux/TacSim.x86_64` (ignored by git). Run `./run.sh` from the repository root for piloting. The launcher opens fullscreen and selects native Wayland when running on a Wayland desktop, including niri. Windowed mode is also resizable.
+Use **TAC → Build Linux player** in the Editor. Output: `Unity/Builds/Linux/TacSim.x86_64` (ignored by git). Run `./run.sh` from the repository root for piloting. The launcher opens fullscreen at the desktop aspect ratio, capped at 1280 pixels wide for rendering performance, and selects native Wayland when available. It refuses to run a player older than the Unity project, preventing stale builds from silently omitting features such as the water filters. Explicit display arguments take precedence; for a resizable 1280×720 window, use `./run.sh -screen-fullscreen 0 -screen-width 1280 -screen-height 720`.
 
 The earlier fixed-size XWayland window floated under niri and did not provide usable input in this setup. Native Wayland fullscreen was verified with keyboard movement and camera switching. If launching the executable directly on Wayland, pass `-force-wayland -screen-fullscreen 1`.
 
@@ -66,9 +97,10 @@ The standalone smoke check uses the vehicle command API to check neutral buoyanc
 - Physics advances at 50 Hz. Thruster commands are mixed and limited per motor, with a response ramp. This is a training approximation, not a calibrated UiASub vehicle model.
 - Buoyancy uses displaced volume and a simple surface-submersion factor. Drag is evaluated relative to configurable water current. The top floats are modeled as ideal stabilization: physics locks pitch and roll, including under external forces and collisions, rather than simulating finite righting motion. Spawn and reset preserve heading but keep the hull level. Pitch/roll commands are ignored; arrows, right-stick Y, and D-pad do not rotate the vehicle.
 - Forward and downward cameras follow the hull; chase view is a training aid. Fog approximates visibility underwater. Surface ripples and caustics are procedural visual effects, not a fluid or optical simulation.
-- No tether, manipulator, sensor noise, autonomous controller, or TAC scoring yet. No claim of deterministic replay or real-world hydrodynamic accuracy.
+- No tether, manipulator, sensor noise, deterministic stepping, or TAC scoring yet. The included vision controller is an integration demo, not a trained controller. No claim of deterministic replay or real-world hydrodynamic accuracy.
 - CachyOS is the current development host; Unity officially targets Ubuntu on Linux. A transient Bee closed-pipe error occurred during initial tool setup and cleared on an unchanged retry.
 
 Reference: [TAC Challenge](https://tacchallenge.com/) and its [2026 mission booklet](https://tacchallenge.com/wp-content/uploads/2026/03/Mission-Booklet-2026.pdf). The local `PLAN.md` remains an uncommitted working draft.
 
-For the next fidelity pass, see [asset requests](docs/ASSETS.md). No external assets or paid packages are required to run this version.
+For the next fidelity pass, see [asset requests](docs/ASSETS.md). The Malstrøm models
+download from the team's shared Drive; no paid packages are required.

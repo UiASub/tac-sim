@@ -71,5 +71,33 @@ namespace TacSim.Tests
             var twice = RovVehicle.Drag(new Vector3(2, -4, 6), Vector3.zero, Vector3.one);
             Assert.That(twice, Is.EqualTo(first * 4));
         }
+
+        [Test]
+        public void CollisionForceUsesImpulseOverPhysicsStep()
+        {
+            Assert.That(RovVehicle.CollisionForceFromImpulse(4, 0.02f), Is.EqualTo(200).Within(0.001f));
+            Assert.That(RovVehicle.CollisionForceFromImpulse(-1, 0.02f), Is.Zero);
+            Assert.That(RovVehicle.CollisionForceFromImpulse(4, 0), Is.Zero);
+        }
+
+        [Test]
+        public void AutomationPortIsOptInAndValidated()
+        {
+            Assert.That(AutomationServer.TryGetPort(new[] { "player" }, out _), Is.False);
+            Assert.That(AutomationServer.TryGetPort(new[] { "player", "-automationPort", "9000" }, out int port), Is.True);
+            Assert.That(port, Is.EqualTo(9000));
+            Assert.That(AutomationServer.TryGetPort(new[] { "player", "-automationPort", "70000" }, out _), Is.False);
+        }
+
+        [Test]
+        public void LaunchResolutionHonoursExplicitWindowAndSize()
+        {
+            Assert.That(LaunchDisplay.ShouldUseDefaultResolution(new[] { "player", "-screen-fullscreen", "1" }), Is.True);
+            Assert.That(LaunchDisplay.ShouldUseDefaultResolution(new[] { "player", "-screen-fullscreen", "0" }), Is.False);
+            Assert.That(LaunchDisplay.ShouldUseDefaultResolution(new[] { "player", "-screen-width", "960" }), Is.False);
+            Assert.That(LaunchDisplay.ShouldUseDefaultResolution(new[] { "player", "-screen-height", "540" }), Is.False);
+            Assert.That(LaunchDisplay.DefaultResolution(1707, 1067), Is.EqualTo(new Vector2Int(1280, 800)));
+            Assert.That(LaunchDisplay.DefaultResolution(1024, 768), Is.EqualTo(new Vector2Int(1024, 768)));
+        }
     }
 }
