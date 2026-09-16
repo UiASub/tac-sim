@@ -51,5 +51,8 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+.venv/
+__pycache__/
+*.py[cod]
 
 # Keep Assets (including .meta files), Packages, and ProjectSettings tracked.

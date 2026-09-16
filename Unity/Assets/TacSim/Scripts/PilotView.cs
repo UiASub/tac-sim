@@ -13,8 +13,15 @@ namespace TacSim
         Texture2D panel;
 
         public void CycleCamera() => Mode = (Mode + 1) % Modes.Length;
+        public void SetMode(int mode)
+        {
+            Mode = Mathf.Clamp(mode, 0, Modes.Length - 1);
+            UpdateCamera();
+        }
 
-        void LateUpdate()
+        void LateUpdate() => UpdateCamera();
+
+        void UpdateCamera()
         {
             Transform rov = vehicle.transform;
             if (Mode == 0)
@@ -53,10 +60,11 @@ namespace TacSim
             GUI.Label(new Rect(40, 32, 340, 40), "TAC / ROV TRAINING", title);
             GUI.Label(new Rect(40, 74, 340, 25), $"{Modes[Mode]}    •    {(vehicle.Armed ? "ARMED" : "THRUST CUT")}", small);
             GUI.Label(new Rect(40, 106, 340, 25), $"DEPTH  {vehicle.Depth:F2} m     SPEED  {vehicle.Body.linearVelocity.magnitude:F2} m/s", label);
-            GUI.Label(new Rect(40, 137, 340, 25), $"HEADING  {vehicle.transform.eulerAngles.y:000}°     THRUST  {vehicle.Throttle:P0}", small);
+            string contact = vehicle.IsColliding ? $"     CONTACT {vehicle.CollisionForce:F0} N" : "";
+            GUI.Label(new Rect(40, 137, 340, 25), $"HEADING  {vehicle.transform.eulerAngles.y:000}°     THRUST  {vehicle.Throttle:P0}{contact}", small);
             GUI.DrawTexture(new Rect(22, height - 113, width - 44, 91), panel);
             GUI.Label(new Rect(40, height - 105, width - 80, 24), "PRACTICE  /  Approach the yellow landing pad. Use the downward camera to align.", label);
-            GUI.Label(new Rect(40, height - 75, width - 80, 22), "WASD move   •   SPACE / CTRL depth   •   Q / E yaw   •   4 DOF / level hull   •   V camera   •   L lights", small);
+            GUI.Label(new Rect(40, height - 75, width - 80, 22), "WASD move   •   SPACE / CTRL depth   •   Q / E yaw   •   SHIFT precision   •   V camera   •   L lights", small);
             GUI.Label(new Rect(40, height - 51, width - 80, 22), "R reset   •   ESC thrust cut / arm   |   Gamepad: sticks move / turn, triggers depth, A camera, B arm, START reset", small);
             GUI.Label(new Rect(width / 2 - 6, height / 2 - 13, 25, 30), "+", label);
             DrawAppearanceMenu(width);
