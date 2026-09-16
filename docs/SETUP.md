@@ -51,7 +51,7 @@ work under the designated source folder. Do not mount Drive as the live Unity pr
 
 ## Authorize and download
 
-The team's [shared Drive folder](https://drive.google.com/drive/folders/1rMqLbI4LG6reuWRAIsvz66fNWmLyx6F9)
+The team's [shared Drive folder](https://drive.google.com/drive/folders/1B5OrHamwqt0KdJ6uWRPCLM4TvGYfliJ1)
 is configured in the manifest. Your Google account needs access to it; a link alone
 does not grant access. A Workspace administrator may need to allow rclone OAuth.
 
