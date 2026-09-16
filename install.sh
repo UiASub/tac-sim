@@ -105,7 +105,7 @@ if [[ ! -x "$editor" ]]; then
 fi
 printf 'Preparing the locked Python/OpenCV demo environment...\n'
 uv sync --project "$project_dir/automation-demo" --locked
-"$project_dir/assets.sh" fetch
+"$project_dir/assets.sh" sync
 printf '\nUnity sign-in and license activation must be completed in Unity Hub by you.\n'
 printf 'Open Unity Hub with: %s\nAdd this project: %s/Unity\n' "$hub" "$project_dir"
 if [[ "$build" == true ]]; then

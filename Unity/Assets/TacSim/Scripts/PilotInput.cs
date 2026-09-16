@@ -29,6 +29,7 @@ namespace TacSim
                 if (k.escapeKey.wasPressedThisFrame) vehicle.SetArmed(!vehicle.Armed);
                 if (k.vKey.wasPressedThisFrame) view.CycleCamera();
                 if (k.lKey.wasPressedThisFrame) ToggleLights();
+                if (k.mKey.wasPressedThisFrame) vehicle.GetComponent<RovVisuals>()?.Toggle();
                 if (view.appearance != null)
                 {
                     if (k.hKey.wasPressedThisFrame) view.appearance.MenuOpen = !view.appearance.MenuOpen;
@@ -48,6 +49,7 @@ namespace TacSim
                 if (g.startButton.wasPressedThisFrame) vehicle.ResetVehicle();
                 if (g.buttonEast.wasPressedThisFrame) vehicle.SetArmed(!vehicle.Armed);
                 if (g.buttonNorth.wasPressedThisFrame) ToggleLights();
+                if (g.selectButton.wasPressedThisFrame) vehicle.GetComponent<RovVisuals>()?.Toggle();
                 if (g.rightShoulder.wasPressedThisFrame && view.appearance != null) view.appearance.CyclePreset();
             }
             if (precision)

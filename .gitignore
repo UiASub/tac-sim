@@ -60,6 +60,7 @@ __pycache__/
 # Large Drive-backed payloads; their manifest and Unity identities remain in Git.
 /external-assets/
 /.asset-state.json
+/.asset-release.json
 /Unity/Assets/External/**
 !/Unity/Assets/External/**/
 !/Unity/Assets/External/**/*.meta

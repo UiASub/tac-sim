@@ -16,6 +16,7 @@ MANIFEST = ROOT / "assets/manifest.json"
 ROOTS = {"runtime": "Unity/Assets/External", "source": "external-assets/source"}
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "tac-sim/rclone.conf"
 STATE = ROOT / ".asset-state.json"
+RELEASE = ROOT / ".asset-release.json"
 
 
 def digest(path):
@@ -61,6 +62,10 @@ def destination(entry):
 
 def load_manifest():
     data = json.loads(MANIFEST.read_text())
+    return validate_manifest(data)
+
+
+def validate_manifest(data):
     if data.get("version") != 1 or not isinstance(data.get("files"), list):
         raise ValueError("Unsupported asset manifest")
     folder = data.get("drive_folder_id", "")
@@ -77,6 +82,70 @@ def load_manifest():
         if type(entry["size"]) is not int or entry["size"] < 0:
             raise ValueError(f"Invalid size: {path}")
     return data
+
+
+def release_hash(files):
+    canonical = json.dumps(sorted(files, key=lambda e: (e["group"], e["path"])),
+                           sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def release_manifest(data, release):
+    if release.get("version") != 1 or release.get("sha256") != release_hash(release["files"]):
+        raise ValueError("Runtime release hash is invalid")
+    result = validate_manifest({**data, "files": release["files"]})
+    # New paths / identities require a Git update; Drive can only replace approved payloads.
+    approved = {e["path"] for e in entries_for(data, "runtime")}
+    if any(e["group"] != "runtime" for e in result["files"]) or {e["path"] for e in result["files"]} != approved:
+        raise ValueError("Drive release requires different runtime assets. Update Git before launching.")
+    return result
+
+
+def sync_latest(data, offline=False):
+    if offline:
+        if not RELEASE.exists():
+            raise ValueError("No verified release cached. Run ./assets.sh sync online first")
+        release = json.loads(RELEASE.read_text())
+    else:
+        ensure_auth(data)
+        raw = rclone("cat", "tac-assets:latest.json", "--head", "1048577",
+                     "--retries", "1", "--contimeout", "10s", "--timeout", "30s",
+                     folder=data["drive_folder_id"], capture=True)
+        if len(raw.encode()) > 1048576:
+            raise ValueError("Runtime release index is too large")
+        release = json.loads(raw)
+    current = release_manifest(data, release)
+    print(f"Runtime release: {release['sha256'][:16]} ({'offline cache' if offline else 'latest on Drive'})")
+    if offline:
+        if verify(current, "runtime"):
+            raise ValueError("Cached runtime assets are missing/modified; reconnect and sync")
+        print("Assets verified (offline runtime).")
+    else:
+        fetch(current, "runtime")
+        write_json(RELEASE, release)
+
+
+def publish_release(data):
+    if verify(data, "runtime"):
+        raise ValueError("Runtime files do not match the manifest; publish changed files first")
+    ensure_auth(data)
+    files = entries_for(data, "runtime")
+    # Make all immutable payloads available before replacing the small release pointer.
+    for entry in files:
+        path = destination(entry)
+        with tempfile.TemporaryDirectory(prefix="tac-release-") as directory:
+            snapshot = Path(directory) / "payload"
+            shutil.copyfile(path, snapshot)
+            if digest(snapshot) != entry["sha256"]:
+                raise ValueError(f"Asset changed during release: {path}")
+            rclone("copyto", str(snapshot), f"tac-assets:objects/{entry['sha256']}",
+                   "--immutable", "--checksum", folder=data["drive_folder_id"])
+    release = {"version": 1, "sha256": release_hash(files), "files": files}
+    with tempfile.TemporaryDirectory(prefix="tac-release-") as directory:
+        index = Path(directory) / "latest.json"
+        write_json(index, release)
+        rclone("copyto", str(index), "tac-assets:latest.json", folder=data["drive_folder_id"])
+    print(f"Published runtime release {release['sha256']}")
 
 
 def rclone(*args, folder=None, capture=False):
@@ -226,6 +295,9 @@ def main():
     upload = sub.add_parser("publish", help="Explicitly upload one immutable object and update the manifest")
     upload.add_argument("group", choices=list(ROOTS))
     upload.add_argument("path", help="Path relative to the group's local directory")
+    sync = sub.add_parser("sync", help="Check latest runtime release on Drive and download changes")
+    sync.add_argument("--offline", action="store_true", help="Explicitly use the last verified release without network")
+    sub.add_parser("release", help="Publish the current runtime manifest as latest on Drive")
     args = parser.parse_args()
     try:
         data = load_manifest()
@@ -235,6 +307,10 @@ def main():
             fetch(data, args.group)
         elif args.command == "publish":
             publish(data, args.group, args.path)
+        elif args.command == "sync":
+            sync_latest(data, args.offline)
+        elif args.command == "release":
+            publish_release(data)
         else:
             missing = verify(data, args.group)
             if missing:

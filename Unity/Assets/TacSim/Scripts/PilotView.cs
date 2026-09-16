@@ -8,6 +8,8 @@ namespace TacSim
         public Camera pilotCamera;
         public WaterAppearance appearance;
         public int Mode { get; private set; }
+        // Used only by the opt-in model screenshot runner.
+        public bool ModelInspection { get; set; }
         static readonly string[] Modes = { "CHASE / TRAINING", "FORWARD CAMERA", "DOWNWARD CAMERA" };
         GUIStyle title, label, small;
         Texture2D panel;
@@ -27,13 +29,13 @@ namespace TacSim
             if (Mode == 0)
             {
                 Quaternion yaw = Quaternion.Euler(0, rov.eulerAngles.y, 0);
-                Vector3 target = rov.position + yaw * new Vector3(0, 1.1f, -3.2f);
+                Vector3 target = rov.position + yaw * new Vector3(0.65f, 0.45f, ModelInspection ? 0.95f : -0.95f);
                 pilotCamera.transform.SetPositionAndRotation(target,
-                    Quaternion.LookRotation(rov.position + rov.forward * 1.2f - target, Vector3.up));
+                    Quaternion.LookRotation(rov.position - target, Vector3.up));
             }
             else
             {
-                Vector3 offset = Mode == 1 ? new Vector3(0, 0.06f, 0.68f) : new Vector3(0, -0.38f, 0.1f);
+                Vector3 offset = Mode == 1 ? new Vector3(0, 0, 0.28f) : new Vector3(0, -0.18f, 0.04f);
                 pilotCamera.transform.SetPositionAndRotation(rov.TransformPoint(offset),
                     rov.rotation * (Mode == 1 ? Quaternion.identity : Quaternion.Euler(90, 0, 0)));
             }
@@ -68,6 +70,8 @@ namespace TacSim
             GUI.Label(new Rect(40, height - 51, width - 80, 22), "R reset   •   ESC thrust cut / arm   |   Gamepad: sticks move / turn, triggers depth, A camera, B arm, START reset", small);
             GUI.Label(new Rect(width / 2 - 6, height / 2 - 13, 25, 30), "+", label);
             DrawAppearanceMenu(width);
+            var visuals = vehicle.GetComponent<RovVisuals>();
+            if (visuals != null && GUI.Button(new Rect(22, 180, 260, 32), $"MALSTRØM / {visuals.DetailName} [M]")) visuals.Toggle();
             GUI.matrix = Matrix4x4.identity;
         }
 

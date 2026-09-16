@@ -130,6 +130,7 @@ namespace TacSim.Editor
             PlayerSettings.runInBackground = true;
             EditorSettings.serializationMode = SerializationMode.ForceText;
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+            RovModelSetup.Configure(rov);
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), ScenePath);
             AssetDatabase.SaveAssets();
             Debug.Log("TAC_SCENE_CREATED");

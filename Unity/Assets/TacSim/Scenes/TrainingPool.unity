@@ -6735,6 +6735,7 @@ GameObject:
   - component: {fileID: 915361370}
   - component: {fileID: 915361369}
   - component: {fileID: 915361367}
+  - component: {fileID: 915361372}
   m_Layer: 0
   m_Name: "ROV \u2022 eight thrusters"
   m_TagString: Untagged
@@ -6759,6 +6760,7 @@ MonoBehaviour:
   headlights:
   - {fileID: 1370067118}
   - {fileID: 1658928485}
+  precisionScale: 0.35
 --- !u!4 &915361368
 Transform:
   m_ObjectHideFlags: 0
@@ -6864,7 +6866,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.05, y: 0.65, z: 1.25}
+  m_Size: {x: 0.406063, y: 0.32, z: 0.515178}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!54 &915361371
 Rigidbody:
@@ -6893,6 +6895,20 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &915361372
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 915361366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4b0d52347286cbd7bee26477619cc1b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TacSim.Runtime::TacSim.RovVisuals
+  lowModel: {fileID: 919132149155446097, guid: f143feaf77561325a9b33e1dd81c1d74, type: 3}
+  highModel: {fileID: 919132149155446097, guid: 8809f491d0056fa1ea57af05fac314f9, type: 3}
 --- !u!1 &920508014
 GameObject:
   m_ObjectHideFlags: 0
@@ -11048,7 +11064,7 @@ Transform:
   m_GameObject: {fileID: 1370067116}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.32, y: 0.04, z: 0.64}
+  m_LocalPosition: {x: -0.13, y: 0.02, z: 0.28}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -13442,7 +13458,7 @@ Transform:
   m_GameObject: {fileID: 1658928484}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.32, y: 0.04, z: 0.64}
+  m_LocalPosition: {x: 0.13, y: 0.02, z: 0.28}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

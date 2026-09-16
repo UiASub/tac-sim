@@ -4,7 +4,7 @@ The current environment is an original procedural training basin. Its fixtures, 
 
 | Priority | Useful input | What it improves |
 | --- | --- | --- |
-| 1 | UiASub ROV CAD/mesh, a known dimension, and front/side/top photos | Hull shape, thruster placement, camera mounts, collision geometry |
+| 1 | Malstrøm front/camera orientation confirmation, measured mass/buoyancy and thruster configuration | The full and simplified CAD meshes are now integrated; remaining data calibrates the dynamics and sensor placement |
 | 2 | Organizer docking station and valve/inspection structure CAD with dimensions | Accurate task apparatus and future docking/manipulation tolerances |
 | 3 | Pool/venue photos, approximate layout and dimensions | Recognizable surroundings, lighting positions, launch/recovery area |
 | 4 | Raw underwater footage with depth, camera settings, and lighting conditions | Matching colour, contrast loss, backscatter, and real camera viewpoints |

@@ -20,7 +20,7 @@ class AssetTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         for name, value in {"ROOT": self.root, "MANIFEST": self.root / "assets/manifest.json",
-                            "STATE": self.root / ".asset-state.json",
+                            "STATE": self.root / ".asset-state.json", "RELEASE": self.root / ".asset-release.json",
                             "CONFIG": self.root / "config/rclone.conf"}.items():
             helper = patch.object(assets, name, value)
             helper.start()
@@ -171,8 +171,10 @@ class AssetTests(unittest.TestCase):
         player = self.root / "Unity/Builds/Linux/TacSim.x86_64"
         player.write_text('#!/usr/bin/env bash\nprintf "ARG:%s\\n" "$@"\n')
         player.chmod(0o755)
+        assets.write_json(assets.RELEASE, {"version": 1, "sha256": assets.release_hash([]), "files": []})
+        offline_env = {**os.environ, "TAC_ASSETS_OFFLINE": "1", "XDG_SESSION_TYPE": "wayland"}
         result = subprocess.run([str(self.root / "run.sh"), "-screen-fullscreen", "0", "-automationPort", "8765"],
-                                capture_output=True, text=True, env={**os.environ, "XDG_SESSION_TYPE": "wayland"})
+                                capture_output=True, text=True, env=offline_env)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Assets verified", result.stdout)
         self.assertIn("ARG:-force-wayland", result.stdout)
@@ -181,7 +183,7 @@ class AssetTests(unittest.TestCase):
         newer = self.root / "Unity/Assets/new-source.cs"
         newer.write_text("// changed source\n")
         os.utime(player, (1, 1))
-        result = subprocess.run([str(self.root / "run.sh")], capture_output=True, text=True)
+        result = subprocess.run([str(self.root / "run.sh")], capture_output=True, text=True, env=offline_env)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("older than", result.stderr)
         self.assertNotIn("ARG:", result.stdout)
@@ -192,6 +194,53 @@ class AssetTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn("ARG:", result.stdout)
         self.assertIn("./assets.sh auth", result.stderr)
+
+    def test_latest_release_is_checked_on_every_online_sync(self):
+        release = {"version": 1, "sha256": assets.release_hash([]), "files": []}
+        with patch.object(assets, "ensure_auth"), patch.object(assets, "rclone", return_value=json.dumps(release)) as remote:
+            assets.sync_latest(self.data)
+            assets.sync_latest(self.data)
+            self.assertEqual(remote.call_count, 2)
+        with patch.object(assets, "rclone", side_effect=AssertionError("network")):
+            assets.sync_latest(self.data, offline=True)
+
+    def test_release_pointer_is_not_published_if_payload_upload_fails(self):
+        entry = self.entry(group="runtime", name="model.fbx")
+        assets.destination(entry).write_bytes(b"payload")
+        with patch.object(assets, "ensure_auth"), patch.object(assets, "rclone", side_effect=OSError("upload failed")) as remote:
+            with self.assertRaises(OSError):
+                assets.publish_release(self.data)
+        self.assertEqual(remote.call_count, 1)
+        self.assertTrue(remote.call_args.args[2].startswith("tac-assets:objects/"))
+
+    def test_release_hash_is_order_independent(self):
+        one = self.entry(name="one.blend")
+        two = self.entry(name="two.blend")
+        self.assertEqual(assets.release_hash([one, two]), assets.release_hash([two, one]))
+
+    def test_release_rejects_bad_hash_and_new_runtime_paths(self):
+        with self.assertRaisesRegex(ValueError, "hash"):
+            assets.release_manifest(self.data, {"version": 1, "sha256": "bad", "files": []})
+        entry = {"group": "runtime", "path": "new.fbx", "sha256": "a" * 64, "size": 1}
+        with self.assertRaisesRegex(ValueError, "Update Git"):
+            assets.release_manifest(self.data, {"version": 1, "sha256": assets.release_hash([entry]), "files": [entry]})
+
+    def test_latest_changed_content_downloads_and_local_edits_survive(self):
+        entry = self.entry(group="runtime", name="model.fbx")
+        path = assets.destination(entry)
+        path.write_bytes(b"old version")
+        assets.write_json(assets.STATE, {str(path.relative_to(self.root)): assets.digest(path)})
+        release = {"version": 1, "sha256": assets.release_hash([entry]), "files": [entry]}
+        def remote(*args, **kwargs):
+            if args[0] == "cat": return json.dumps(release)
+            return self.download(b"payload")(*args, **kwargs)
+        with patch.object(assets, "ensure_auth"), patch.object(assets, "rclone", side_effect=remote):
+            assets.sync_latest(self.data)
+            self.assertEqual(path.read_bytes(), b"payload")
+            path.write_bytes(b"local edit")
+            with self.assertRaisesRegex(ValueError, "Local edits"):
+                assets.sync_latest(self.data)
+            self.assertEqual(path.read_bytes(), b"local edit")
 
     def test_git_ignores_payload_but_tracks_unity_metadata(self):
         subprocess.run(["git", "init", "-q", str(self.root)], check=True)

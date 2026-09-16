@@ -2,7 +2,11 @@
 set -euo pipefail
 
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-"$project_dir/assets.sh" fetch
+if [[ "${TAC_ASSETS_OFFLINE:-0}" == 1 ]]; then
+    "$project_dir/assets.sh" sync --offline
+else
+    "$project_dir/assets.sh" sync
+fi
 player="$project_dir/Unity/Builds/Linux/TacSim.x86_64"
 build_marker="$project_dir/Unity/Builds/Linux/.source-build-time"
 if [[ ! -x "$player" ]]; then

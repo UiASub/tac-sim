@@ -44,8 +44,8 @@ Ubuntu support target.
 | Manifest with exact filenames, sizes, SHA-256 | Git: `assets/manifest.json` |
 | OAuth credentials | User config: `$XDG_CONFIG_HOME/tac-sim/rclone.conf` (default `~/.config/...`) |
 
-All existing art stays in Git: it is small. The manifest initially has **no external
-payloads**, so the current project runs without Drive access. `PLAN.md` stays untracked.
+Small environment art stays in Git. Both Malstrøm FBX variants and original Blender
+sources are on Drive; runtime models are required for a fresh build. `PLAN.md` stays untracked.
 Do not blanket-ignore `.blend`/FBX files throughout the repository; put large source
 work under the designated source folder. Do not mount Drive as the live Unity project.
 
@@ -57,7 +57,8 @@ does not grant access. A Workspace administrator may need to allow rclone OAuth.
 
 ```bash
 ./assets.sh auth                       # browser sign-in, read-only access
-./assets.sh fetch                      # required runtime assets only
+./assets.sh sync                       # latest released runtime assets from Drive
+./assets.sh fetch                      # deliberately restore Git-pinned runtime versions
 ./assets.sh fetch --group source       # optional modeling/reference files
 ./assets.sh fetch --group all
 ./assets.sh check                      # local verification only; no network
@@ -80,12 +81,27 @@ folder ID and intended read-only scope. Do not paste tokens/secrets into chat or
 These Google Cloud/Workspace consent settings require a team owner/admin and are
 not provisioned by the installer.
 
-Every `run.sh` verifies SHA-256 against the checked-out Git manifest. If files are
-missing/outdated it fetches the pinned objects, verifies them, then performs the
-existing player-freshness check. Fresh downloads require rebuilding the player.
-A verified checkout works offline: “synced” means matching this Git revision, not
-polling whatever is newest in Drive. There is no background process or two-way sync.
-Noninteractive runs fail with instructions when browser authorization is needed.
+Every `run.sh` downloads the small `latest.json` release index from Drive. Its
+aggregate SHA-256 covers the sorted runtime paths, file sizes and individual hashes.
+Local files are checksum-verified even when the aggregate hash is unchanged;
+missing/outdated objects are downloaded and verified before launch. This hashes
+the managed runtime release, not loose reference files or source work in progress.
+Publishing source files alone does not update the runtime release.
+
+Unity bakes imported models into its player: changed runtime payloads invalidate the
+existing build, and the launcher asks you to rebuild. It does not silently run old
+geometry. A failed online check blocks launch; explicit offline use is available:
+
+```bash
+TAC_ASSETS_OFFLINE=1 ./run.sh
+```
+
+Offline mode requires a previously verified release cache and intact payloads.
+Credentials and `.asset-release.json` are not committed. New/removal/renamed runtime
+paths require a matching Git update; Drive may update bytes only for the approved
+set of runtime paths. This keeps code and Unity identities under Git review.
+For reproducibility, `fetch` still restores the Git-pinned versions; normal launch
+will move back to latest. There is no background daemon or two-way sync.
 
 Downloads are staged and checksum-checked before replacement. Local edits are
 never knowingly overwritten: move modified files aside before fetching. Unlisted
@@ -104,10 +120,14 @@ folder, then authorize uploads:
 ./assets.sh publish source rov/hull.blend
 # Put an export at Unity/Assets/External/rov/hull.fbx and import it in Unity, then:
 ./assets.sh publish runtime rov/hull.fbx
+./assets.sh release  # publish the verified runtime set as latest; upload index last
 ```
 
-The command snapshots one file, uploads it to `objects/<sha256>` in Drive, then
-updates the Git manifest. Hash-named objects are immutable: keep old objects so old
+`publish` snapshots one file, uploads it to `objects/<sha256>` in Drive, then
+updates the Git manifest. `release` verifies and uploads all runtime objects before
+replacing `latest.json`; normal launches discover that new aggregate hash. Coordinate
+one release publisher at a time (there is no distributed publishing lock).
+Hash-named objects are immutable: keep old objects so old
 Git checkouts remain reproducible. Do not edit/rename them through the Drive UI.
 Existing loose files in the Drive folder are not automatically imported or deleted.
 This folder may also hold human-readable reference folders, but only manifest

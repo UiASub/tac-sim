@@ -7,7 +7,15 @@ A Unity pool prototype for TAC Challenge ROV pilot practice. The vehicle is a fo
 On Arch/CachyOS, start with `./install.sh` (or `./install.sh --check` for a read-only
 inventory). See [setup and shared Drive assets](docs/SETUP.md) for browser
 authorization, optional source downloads, publishing assets, and building.
-`./run.sh` verifies/downloads pinned runtime assets before its player-freshness check.
+`./run.sh` checks the latest runtime release hash on Drive and downloads changes
+before its player-freshness check. Explicit offline use: `TAC_ASSETS_OFFLINE=1 ./run.sh`.
+
+The supplied **Malstrøm ROV** is available in low/simplified and high/full detail.
+Use **M**, the model button, or gamepad Select to toggle; low is the default.
+Both share a true-scale collision box and four-DOF physics. The supplied simplified
+CAD model is still approximately 1.46 million triangles (full: 2.52 million), not a
+game-optimized low-poly model. Mass, drag and thruster mixing remain prototype values.
+See [model notes and screenshots](docs/ROV.md).
 
 Use **Unity 6000.3.23f1 LTS**. In Unity Hub, add the `Unity/` directory as a project. Open `Assets/TacSim/Scenes/TrainingPool.unity` and press Play.
 
@@ -21,6 +29,7 @@ The project uses URP 17.3.0 and the Input System. The training basin includes ti
 | Precision movement (35%) | Hold Shift | Hold left shoulder |
 | Cycle chase, forward, downward view | V | South / A |
 | Toggle headlights | L | North / Y |
+| Toggle low/high model detail | M or model button | Select / View |
 | Cut thrust / re-arm | Escape | East / B |
 | Reset vehicle | R | Start |
 | Cycle water preset | F | Right shoulder |
@@ -93,4 +102,5 @@ The standalone smoke check uses the vehicle command API to check neutral buoyanc
 
 Reference: [TAC Challenge](https://tacchallenge.com/) and its [2026 mission booklet](https://tacchallenge.com/wp-content/uploads/2026/03/Mission-Booklet-2026.pdf). The local `PLAN.md` remains an uncommitted working draft.
 
-For the next fidelity pass, see [asset requests](docs/ASSETS.md). No external assets or paid packages are required to run this version.
+For the next fidelity pass, see [asset requests](docs/ASSETS.md). The Malstrøm models
+download from the team's shared Drive; no paid packages are required.
