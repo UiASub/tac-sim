@@ -48,15 +48,19 @@ namespace TacSim
             Body.angularDamping = 0;
             Body.interpolation = RigidbodyInterpolation.Interpolate;
             Body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            // Idealized top-float stabilization: three translations and yaw only.
+            Body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             spawnPosition = transform.position;
-            spawnRotation = transform.rotation;
+            spawnRotation = Quaternion.Euler(0, transform.eulerAngles.y, 0);
+            Body.rotation = spawnRotation;
+            transform.rotation = spawnRotation;
             forces = new float[thrusters.Length];
         }
 
         public void SetCommand(Vector3 translation, Vector3 rotation)
         {
             TranslationCommand = Vector3.ClampMagnitude(translation, 1);
-            RotationCommand = Vector3.ClampMagnitude(rotation, 1);
+            RotationCommand = new Vector3(0, Mathf.Clamp(rotation.y, -1, 1), 0);
         }
 
         public void SetArmed(bool armed)

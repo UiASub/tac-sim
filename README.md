@@ -1,6 +1,6 @@
 # TAC ROV training simulator
 
-A Unity pool prototype for TAC Challenge ROV pilot practice. The vehicle is a generic eight-thruster ROV with configurable buoyancy, drag, and thruster geometry. The landing pad is a practice target; official mission geometry and scoring are not implemented yet.
+A Unity pool prototype for TAC Challenge ROV pilot practice. The vehicle is a four-DOF, generic eight-thruster ROV: forward/back, strafe, vertical movement, and yaw, with pitch and roll locked. Buoyancy, drag, and thruster geometry are configurable. The landing pad is a practice target; official mission geometry and scoring are not implemented yet.
 
 ## Open and run
 
@@ -13,8 +13,6 @@ The project uses URP 17.3.0 and the Input System. The training basin includes ti
 | Forward/back, strafe | W/S, A/D | Left stick |
 | Ascend/descend | Space / Left Ctrl | Right / left trigger |
 | Yaw | Q/E | Right stick X |
-| Pitch | Up/down arrows | Right stick Y |
-| Roll | Left/right arrows | D-pad left/right |
 | Cycle chase, forward, downward view | V | South / A |
 | Toggle headlights | L | North / Y |
 | Cut thrust / re-arm | Escape | East / B |
@@ -58,7 +56,7 @@ UNITY_EDITOR=/home/dl/Unity/Hub/Editor/6000.3.23f1/Editor/Unity
   -logFile /tmp/tac-visual-check.log
 ```
 
-The standalone smoke check uses the vehicle command API to check neutral buoyancy, translation, yaw, emergency cut, reset, and camera switching. It also checks visibility changes, independent effect toggles, and unchanged vehicle state, then reports a short frame-rate sample. It exits with code 0 on success or 1 on a failed check. Run it with a display available to verify rendering and capture screenshots. Automated checks do not replace a hands-on gamepad check.
+The standalone smoke check uses the vehicle command API to check neutral buoyancy, all three translation axes, yaw, rejected pitch/roll commands, level-hull constraints under external torque and off-centre force, emergency cut, reset, and camera switching. It also checks visibility changes, independent effect toggles, and unchanged vehicle state, then reports a short frame-rate sample. It exits with code 0 on success or 1 on a failed check. Run it with a display available to verify rendering and capture screenshots. Automated checks do not replace a hands-on gamepad check.
 
 **TAC → Create training pool** rebuilds the generated scene and materials. It replaces edits to that scene; use it only when intentionally regenerating the prototype. Normal project opening does not regenerate anything.
 
@@ -66,7 +64,7 @@ The standalone smoke check uses the vehicle command API to check neutral buoyanc
 
 - One Unity unit is one metre; local X is right, Y is up, Z is forward.
 - Physics advances at 50 Hz. Thruster commands are mixed and limited per motor, with a response ramp. This is a training approximation, not a calibrated UiASub vehicle model.
-- Buoyancy uses displaced volume and a simple surface-submersion factor. Drag is evaluated relative to configurable water current. The buoyancy centre above the mass centre gives a righting moment.
+- Buoyancy uses displaced volume and a simple surface-submersion factor. Drag is evaluated relative to configurable water current. The top floats are modeled as ideal stabilization: physics locks pitch and roll, including under external forces and collisions, rather than simulating finite righting motion. Spawn and reset preserve heading but keep the hull level. Pitch/roll commands are ignored; arrows, right-stick Y, and D-pad do not rotate the vehicle.
 - Forward and downward cameras follow the hull; chase view is a training aid. Fog approximates visibility underwater. Surface ripples and caustics are procedural visual effects, not a fluid or optical simulation.
 - No tether, manipulator, sensor noise, autonomous controller, or TAC scoring yet. No claim of deterministic replay or real-world hydrodynamic accuracy.
 - CachyOS is the current development host; Unity officially targets Ubuntu on Linux. A transient Bee closed-pipe error occurred during initial tool setup and cleared on an unchanged retry.

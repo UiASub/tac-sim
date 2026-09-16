@@ -21,9 +21,7 @@ namespace TacSim
                 move = new Vector3(Axis(k.dKey.isPressed, k.aKey.isPressed),
                     Axis(k.spaceKey.isPressed, k.leftCtrlKey.isPressed),
                     Axis(k.wKey.isPressed, k.sKey.isPressed));
-                turn = new Vector3(Axis(k.downArrowKey.isPressed, k.upArrowKey.isPressed),
-                    Axis(k.eKey.isPressed, k.qKey.isPressed),
-                    Axis(k.leftArrowKey.isPressed, k.rightArrowKey.isPressed));
+                turn = new Vector3(0, Axis(k.eKey.isPressed, k.qKey.isPressed), 0);
                 if (k.rKey.wasPressedThisFrame) vehicle.ResetVehicle();
                 if (k.escapeKey.wasPressedThisFrame) vehicle.SetArmed(!vehicle.Armed);
                 if (k.vKey.wasPressedThisFrame) view.CycleCamera();
@@ -41,7 +39,7 @@ namespace TacSim
                 Vector2 left = g.leftStick.ReadValue();
                 Vector2 right = g.rightStick.ReadValue();
                 move += new Vector3(left.x, g.rightTrigger.ReadValue() - g.leftTrigger.ReadValue(), left.y);
-                turn += new Vector3(-right.y, right.x, -g.dpad.ReadValue().x);
+                turn += new Vector3(0, right.x, 0);
                 if (g.buttonSouth.wasPressedThisFrame) view.CycleCamera();
                 if (g.startButton.wasPressedThisFrame) vehicle.ResetVehicle();
                 if (g.buttonEast.wasPressedThisFrame) vehicle.SetArmed(!vehicle.Armed);

@@ -37,6 +37,20 @@ namespace TacSim
             Vector3 start = vehicle.Body.position;
             yield return new WaitForSeconds(1);
             if (!Check(Vector3.Distance(vehicle.Body.position, start) < 0.1f, "neutral buoyancy")) yield break;
+            vehicle.SetCommand(Vector3.zero, new Vector3(1, 0.5f, -1));
+            if (!Check(vehicle.RotationCommand == new Vector3(0, 0.5f, 0), "command API rejects pitch and roll without reducing yaw")) yield break;
+            vehicle.SetCommand(Vector3.zero, Vector3.zero);
+            vehicle.Body.AddTorque(new Vector3(100, 0, 100), ForceMode.Impulse);
+            vehicle.Body.AddForceAtPosition(Vector3.right * 20,
+                vehicle.Body.worldCenterOfMass + Vector3.up, ForceMode.Impulse);
+            yield return new WaitForSeconds(0.5f);
+            if (!Check(Vector3.Angle(vehicle.Body.rotation * Vector3.up, Vector3.up) < 0.01f,
+                "pitch and roll locked under external torque and off-centre force")) yield break;
+            vehicle.ResetVehicle();
+            vehicle.SetCommand(Vector3.right, Vector3.zero);
+            yield return new WaitForSeconds(1);
+            if (!Check(vehicle.Body.position.x > start.x + 0.2f, "strafe propulsion")) yield break;
+            vehicle.ResetVehicle();
             vehicle.SetCommand(Vector3.forward, Vector3.zero);
             yield return new WaitForSeconds(2);
             if (!Check(vehicle.Body.position.z > start.z + 0.5f, "forward propulsion")) yield break;
@@ -48,6 +62,8 @@ namespace TacSim
             vehicle.SetCommand(Vector3.zero, Vector3.up);
             yield return new WaitForSeconds(1);
             if (!Check(Quaternion.Angle(vehicle.Body.rotation, Quaternion.identity) > 5, "yaw torque")) yield break;
+            if (!Check(Vector3.Angle(vehicle.Body.rotation * Vector3.up, Vector3.up) < 0.01f,
+                "hull stays level while yawing")) yield break;
             vehicle.SetArmed(false);
             yield return new WaitForFixedUpdate();
             if (!Check(vehicle.Throttle == 0 && vehicle.TranslationCommand == Vector3.zero, "emergency cut")) yield break;

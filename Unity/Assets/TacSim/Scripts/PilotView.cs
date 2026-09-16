@@ -56,7 +56,7 @@ namespace TacSim
             GUI.Label(new Rect(40, 137, 340, 25), $"HEADING  {vehicle.transform.eulerAngles.y:000}°     THRUST  {vehicle.Throttle:P0}", small);
             GUI.DrawTexture(new Rect(22, height - 113, width - 44, 91), panel);
             GUI.Label(new Rect(40, height - 105, width - 80, 24), "PRACTICE  /  Approach the yellow landing pad. Use the downward camera to align.", label);
-            GUI.Label(new Rect(40, height - 75, width - 80, 22), "WASD move   •   SPACE / CTRL depth   •   Q / E yaw   •   ARROWS pitch / roll   •   V camera   •   L lights", small);
+            GUI.Label(new Rect(40, height - 75, width - 80, 22), "WASD move   •   SPACE / CTRL depth   •   Q / E yaw   •   4 DOF / level hull   •   V camera   •   L lights", small);
             GUI.Label(new Rect(40, height - 51, width - 80, 22), "R reset   •   ESC thrust cut / arm   |   Gamepad: sticks move / turn, triggers depth, A camera, B arm, START reset", small);
             GUI.Label(new Rect(width / 2 - 6, height / 2 - 13, 25, 30), "+", label);
             DrawAppearanceMenu(width);
