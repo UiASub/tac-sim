@@ -1,5 +1,5 @@
 {
   "name": "TacSim.Editor",
-  "references": ["TacSim.Runtime", "Unity.RenderPipelines.Universal.Runtime"],
+  "references": ["TacSim.Runtime", "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime"],
   "includePlatforms": ["Editor"]
 }

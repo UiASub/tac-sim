@@ -6,7 +6,7 @@ A Unity pool prototype for TAC Challenge ROV pilot practice. The vehicle is a ge
 
 Use **Unity 6000.3.23f1 LTS**. In Unity Hub, add the `Unity/` directory as a project. Open `Assets/TacSim/Scenes/TrainingPool.unity` and press Play.
 
-The project uses URP 17.3.0 and the Input System. Blender is reserved for detailed assets; this first scene uses editable Unity primitives.
+The project uses URP 17.3.0 and the Input System. The training basin includes tiled surfaces, animated water and caustics, suspended particles, underwater lights, poolside railings, a ladder, service pipework, depth markings, and collision-enabled practice hoops. Geometry, materials, and tile textures are generated locally and remain editable. Blender is reserved for detailed reference-based assets.
 
 | Action | Keyboard | Gamepad |
 | --- | --- | --- |
@@ -19,6 +19,15 @@ The project uses URP 17.3.0 and the Input System. Blender is reserved for detail
 | Toggle headlights | L | North / Y |
 | Cut thrust / re-arm | Escape | East / B |
 | Reset vehicle | R | Start |
+| Cycle water preset | F | Right shoulder |
+| Open visual settings | H or click Filters | — |
+| Toggle camera effects | P | — |
+
+## Water and camera filters
+
+Open **Filters [H]** to choose Clear Pool, Coastal Water, Turbid Water, or Night Dive. Adjust the approximate visibility range and independently toggle camera colour grading/bloom/grain/vignette, suspended particles, and animated caustics. Camera effects can be disabled while retaining physical-scene fog; use Clear Pool and the visibility slider for a clearer view. Night Dive suppresses caustics and reduces facility lighting, making the ROV headlights useful.
+
+These are artistic training conditions, not calibrated visibility measurements or image-processing algorithms. They apply consistently across all three camera views and do not modify vehicle physics. Fog and underwater camera effects switch off when the camera rises above the surface. Settings are session-local; launch starts in Clear Pool.
 
 Losing window focus cuts thrust. Re-arm after returning to the window. Reset restores the initial pose, clears velocity and commands, and re-arms the vehicle. Quit the standalone window through the window manager.
 
@@ -43,9 +52,13 @@ UNITY_EDITOR=/home/dl/Unity/Hub/Editor/6000.3.23f1/Editor/Unity
 
 ./run.sh -smokeTest \
   -captureScreenshot /tmp/tac-pool.png -logFile /tmp/tac-player.log
+
+# Also capture all four visual presets, the settings panel, and effects disabled.
+./run.sh -smokeTest -capturePresets /tmp/tac-presets \
+  -logFile /tmp/tac-visual-check.log
 ```
 
-The standalone smoke check uses the vehicle command API to check neutral buoyancy, translation, yaw, emergency cut, reset, and camera switching. It exits with code 0 on success or 1 on a failed check. Run it with a display available to verify rendering and capture a screenshot. Automated checks do not replace a hands-on gamepad check.
+The standalone smoke check uses the vehicle command API to check neutral buoyancy, translation, yaw, emergency cut, reset, and camera switching. It also checks visibility changes, independent effect toggles, and unchanged vehicle state, then reports a short frame-rate sample. It exits with code 0 on success or 1 on a failed check. Run it with a display available to verify rendering and capture screenshots. Automated checks do not replace a hands-on gamepad check.
 
 **TAC → Create training pool** rebuilds the generated scene and materials. It replaces edits to that scene; use it only when intentionally regenerating the prototype. Normal project opening does not regenerate anything.
 
@@ -54,8 +67,10 @@ The standalone smoke check uses the vehicle command API to check neutral buoyanc
 - One Unity unit is one metre; local X is right, Y is up, Z is forward.
 - Physics advances at 50 Hz. Thruster commands are mixed and limited per motor, with a response ramp. This is a training approximation, not a calibrated UiASub vehicle model.
 - Buoyancy uses displaced volume and a simple surface-submersion factor. Drag is evaluated relative to configurable water current. The buoyancy centre above the mass centre gives a righting moment.
-- Forward and downward cameras follow the hull; chase view is a training aid. Fog approximates visibility and is applied globally, including above the water surface.
+- Forward and downward cameras follow the hull; chase view is a training aid. Fog approximates visibility underwater. Surface ripples and caustics are procedural visual effects, not a fluid or optical simulation.
 - No tether, manipulator, sensor noise, autonomous controller, or TAC scoring yet. No claim of deterministic replay or real-world hydrodynamic accuracy.
 - CachyOS is the current development host; Unity officially targets Ubuntu on Linux. A transient Bee closed-pipe error occurred during initial tool setup and cleared on an unchanged retry.
 
 Reference: [TAC Challenge](https://tacchallenge.com/) and its [2026 mission booklet](https://tacchallenge.com/wp-content/uploads/2026/03/Mission-Booklet-2026.pdf). The local `PLAN.md` remains an uncommitted working draft.
+
+For the next fidelity pass, see [asset requests](docs/ASSETS.md). No external assets or paid packages are required to run this version.
