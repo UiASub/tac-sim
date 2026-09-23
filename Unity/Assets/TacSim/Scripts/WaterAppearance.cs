@@ -30,10 +30,14 @@ namespace TacSim
         Bloom bloom;
         bool wasUnderwater = true;
         MaterialPropertyBlock surfaceProperties;
+        RovVehicle currentReference;
+        ParticleSystem.Particle[] driftingParticles;
 
         void Awake()
         {
             surfaceProperties = new MaterialPropertyBlock();
+            currentReference = FindFirstObjectByType<RovVehicle>();
+            driftingParticles = new ParticleSystem.Particle[suspendedParticles.main.maxParticles];
             // Volume owns a private runtime copy; the authored profile stays unchanged.
             runtimeProfile = effects.profile;
             if (!runtimeProfile.TryGet(out grade)) grade = runtimeProfile.Add<ColorAdjustments>(true);
@@ -83,6 +87,15 @@ namespace TacSim
         {
             bool underwater = targetCamera.transform.position.y < 0;
             if (underwater != wasUnderwater) ApplyAppearance();
+            // The world-space silt follows the same local flow as the ROV.
+            if (ParticlesEnabled && currentReference != null)
+            {
+                int count = suspendedParticles.GetParticles(driftingParticles);
+                for (int i = 0; i < count; i++)
+                    driftingParticles[i].velocity = currentReference.WaterVelocityAt(driftingParticles[i].position, Time.time)
+                        + Vector3.down * .004f;
+                suspendedParticles.SetParticles(driftingParticles, count);
+            }
         }
 
         void ApplyAppearance()
