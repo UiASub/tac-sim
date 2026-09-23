@@ -1,0 +1,114 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1020528281662284332
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7919913288573516681}
+  - component: {fileID: 7679704535297060074}
+  m_Layer: 0
+  m_Name: TAC_Pipeline_Procedural
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7919913288573516681
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1020528281662284332}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7679704535297060074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1020528281662284332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86f0624eac2d8593e90e0336f21b8446, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TAC.Pipeline.ProceduralPipelineGenerator
+  enforceBookletLimits: 1
+  maxTotalLength: 10
+  pipeDiameter: 0.2
+  markerCount: 6
+  markerIdMin: 1
+  markerIdMax: 99
+  markerMinSeparation: 0.2
+  randomMarkerYaw: 1
+  bendAngleLimit: 90
+  constantDepth: 1
+  totalLength: 7.5
+  startPosition: {x: 0, y: 0, z: 0}
+  pathHeight: 0
+  startHeadingYaw: 0
+  randomStartInsideVolume: 1
+  segmentLengthMin: 1.1
+  segmentLengthMax: 2.6
+  sampleSpacing: 0.05
+  seed: 413506354
+  orthogonalLayout: 1
+  elbowAngle: 90
+  elbowAngleMin: 50
+  elbowRadius: 0.18
+  minStraightBetweenElbows: 0.35
+  selfAvoidPath: 1
+  selfClearancePipeRadii: 2.6
+  pipeColliderMode: 1
+  colliderIsTrigger: 0
+  separateColliderObject: 1
+  colliderLayer: 
+  addMarkerColliders: 1
+  markerColliderIsTrigger: 1
+  addPingerCollider: 1
+  addMeshCollider: 0
+  markerSize: 0.15
+  markerBits: 4
+  quietZoneModules: 1
+  requestedCardTextureSize: 256
+  crispPixelFilter: 1
+  keepCardTexturesAfterClear: 1
+  markerLift: 0.006
+  markerOrientation: 0
+  markerTiltLimitDegrees: 4
+  addClearPlasticFrame: 1
+  frameBorderFraction: 0.18
+  showIdLabelOnCard: 0
+  useExternalMarkerTextures: 0
+  externalMarkerTextures: []
+  externalIdOffset: 1
+  useVolume: 1
+  volumeCenter: {x: 0, y: 0, z: 0}
+  volumeSize: {x: 6, y: 1.2, z: 6}
+  volumeSafetyMargin: 0.18
+  addVolumeCollider: 0
+  drawGizmos: 1
+  radialResolution: 22
+  hollowPipe: 1
+  wallThickness: 0.012
+  addJointCollars: 1
+  collarLength: 0.14
+  collarRadiusGain: 1.22
+  addEndFlanges: 1
+  addPinger: 1
+  uvWorldSize: 1.25
+  generateOnAwake: 1
+  generateInEditMode: 0
+  logGroundTruth: 1
+  style: {fileID: 11400000, guid: da7645221529ac26d8faaffac72e8901, type: 2}
