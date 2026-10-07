@@ -26,11 +26,27 @@ namespace TacSim
         float lastCommandTime;
         bool ownedControls;
         int port;
+        TacCourse course;
+
+        public bool HasClient => clientConnected;
+#if UNITY_EDITOR
+        public const string EditorPrefKey = "TacSim.AutomationInPlayMode";
+#endif
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
         {
-            if (!TryGetPort(Environment.GetCommandLineArgs(), out int requestedPort)) return;
+            if (!TryGetPort(Environment.GetCommandLineArgs(), out int requestedPort)
+                && !TryGetPortFromEnvironment(out requestedPort))
+            {
+#if UNITY_EDITOR
+                // Editor Play mode has no command line; toggle with TAC → Automation server in Play mode.
+                if (!UnityEditor.EditorPrefs.GetBool(EditorPrefKey, false)) return;
+                requestedPort = DefaultPort;
+#else
+                return;
+#endif
+            }
             PilotInput pilot = FindFirstObjectByType<PilotInput>();
             if (pilot == null)
             {
@@ -58,9 +74,19 @@ namespace TacSim
             return false;
         }
 
+        static bool TryGetPortFromEnvironment(out int port)
+        {
+            port = DefaultPort;
+            string value = Environment.GetEnvironmentVariable("TAC_AUTOMATION_PORT");
+            if (!int.TryParse(value, out int parsed) || parsed is <= 0 or > 65535) return false;
+            port = parsed;
+            return true;
+        }
+
         void Start()
         {
             input = GetComponent<PilotInput>();
+            course = FindFirstObjectByType<TacCourse>();
             vehicle = input.vehicle;
             view = input.view;
             pilotCamera = view.pilotCamera;
@@ -145,6 +171,14 @@ namespace TacSim
                     vehicle.SetArmed(true);
                     lastCommandTime = Time.unscaledTime;
                     break;
+                case "scenario":
+                    // New course: seed > 0 is reproducible, seed <= 0 picks a random one. Also resets the vehicle.
+                    if (course == null) return "this scene has no TAC course";
+                    if (request.seed > 0) course.Build(request.seed);
+                    else course.BuildRandom();
+                    vehicle.ResetVehicle();
+                    lastCommandTime = Time.unscaledTime;
+                    break;
                 case "disarm":
                 case "stop":
                     vehicle.SetArmed(false);
@@ -191,6 +225,17 @@ namespace TacSim
                 peak_collision_force = vehicle.PeakCollisionForce,
                 camera = new[] { "chase", "forward", "downward" }[view.Mode]
             };
+            if (course != null && (request.ground_truth || string.Equals(request.action, "scenario", StringComparison.OrdinalIgnoreCase)))
+            {
+                response.course_seed = course.Seed;
+                response.pipeline_marker_ids = course.PipelineMarkerIds;
+                response.structure_marker_ids = course.StructureMarkerIds;
+                response.dock_marker_ids = TacCourse.DockMarkerIds;
+                response.pinger_position = Vec3.From(course.PingerPosition);
+                response.dock_offset = Vec3.From(course.DockOffset(body.position));
+                response.valve_a_angle = course.ValveA.angle;
+                response.valve_b_angle = course.ValveB.angle;
+            }
             if (request.capture)
             {
                 response.image_width = Mathf.Clamp(request.image_width > 0 ? request.image_width : 320, 64, 1280);
@@ -304,6 +349,8 @@ namespace TacSim
             public int image_width;
             public int image_height;
             public int jpeg_quality;
+            public bool ground_truth;
+            public int seed;
         }
 
         [Serializable]
@@ -328,6 +375,15 @@ namespace TacSim
             public int image_width;
             public int image_height;
             public string image_jpeg_base64;
+            // Ground truth (only with "ground_truth": true or action "scenario"); pipeline IDs start at the pinger.
+            public int course_seed;
+            public int[] pipeline_marker_ids;
+            public int[] structure_marker_ids;
+            public int[] dock_marker_ids;
+            public Vec3 pinger_position;
+            public Vec3 dock_offset;
+            public float valve_a_angle;
+            public float valve_b_angle;
         }
 
         [Serializable]

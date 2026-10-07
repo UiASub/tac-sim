@@ -10,6 +10,9 @@ namespace TacSim
         public Light[] headlights;
         [Range(0.1f, 1)] public float precisionScale = 0.35f;
         public bool ExternalControl { get; set; }
+        TacCourse course;
+
+        void Start() => course = FindFirstObjectByType<TacCourse>();
 
         void Update()
         {
@@ -30,6 +33,7 @@ namespace TacSim
                 if (k.vKey.wasPressedThisFrame) view.CycleCamera();
                 if (k.lKey.wasPressedThisFrame) ToggleLights();
                 if (k.mKey.wasPressedThisFrame) vehicle.GetComponent<RovVisuals>()?.Toggle();
+                if (k.nKey.wasPressedThisFrame && course != null) course.BuildRandom();
                 if (view.appearance != null)
                 {
                     if (k.hKey.wasPressedThisFrame) view.appearance.MenuOpen = !view.appearance.MenuOpen;
@@ -61,7 +65,7 @@ namespace TacSim
         }
 
         static float Axis(bool positive, bool negative) => (positive ? 1 : 0) - (negative ? 1 : 0);
-        void ToggleLights() { foreach (Light light in headlights) light.enabled = !light.enabled; }
+        public void ToggleLights() { foreach (Light light in headlights) light.enabled = !light.enabled; }
         void OnApplicationFocus(bool focused)
         {
             // The opt-in smoke runner owns commands while ExternalControl is active.
