@@ -64,6 +64,18 @@ namespace TacSim.Editor
             Debug.Log("TAC_BUILD_SUCCEEDED");
         }
 
+        // Opens the arena and presses Play. Also the way to start a session from a script, with the API on:
+        // Unity -batchmode -projectPath Unity -executeMethod TacSim.Editor.TacArenaSetup.PlayArena -automationPort 8765
+        [MenuItem("TAC/Play TAC arena")]
+        public static void PlayArena()
+        {
+            if (EditorApplication.isPlaying) return;
+            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            if (!File.Exists(ArenaPath)) CreateArena();
+            EditorSceneManager.OpenScene(ArenaPath, OpenSceneMode.Single);
+            EditorApplication.EnterPlaymode();
+        }
+
         [MenuItem(AutomationMenu)]
         static void ToggleAutomation() =>
             EditorPrefs.SetBool(AutomationServer.EditorPrefKey, !EditorPrefs.GetBool(AutomationServer.EditorPrefKey, false));

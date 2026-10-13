@@ -42,15 +42,32 @@ namespace TacSim
         public int[] StructureMarkerIds { get; private set; } = Array.Empty<int>();
         public Vector3 PingerPosition { get; private set; }
         public Transform DockPuck { get; private set; }
+        public TacDock Dock { get; private set; }
+        public TacArm Arm { get; private set; }
+        public Transform Structure { get; private set; }
         public TacValve ValveA { get; private set; }
         public TacValve ValveB { get; private set; }
         public float PipelineLength { get; private set; }
-        public string Hint => $"TAC ARENA  /  course seed {Seed}, pipeline {PipelineLength:F1} m, " +
-                              $"{PipelineMarkerIds.Length} pipeline markers.  N = new random course";
+        public string Hint => $"TAC ARENA  /  seed {Seed}, {PipelineMarkerIds.Length} pipeline markers   •   " +
+                              $"DOCK {DockStatus}   •   VALVE A {ValveStatus(ValveA)}  B {ValveStatus(ValveB)}   •   " +
+                              "N new course   Z / X wrist   C arm down";
+
+        string DockStatus => Dock == null ? "-" : Dock.Precision ? "PRECISION" : Dock.Docked ? "DOCKED"
+            : Dock.PuckContact ? $"puck {Dock.PuckSeconds:F0} s" : Dock.OnPlate ? $"on plate {Dock.DockedSeconds:F0} s" : "-";
+
+        static string ValveStatus(TacValve valve) =>
+            valve == null ? "-" : valve.Completed ? "OPEN" : $"{valve.angle:F0}°" + (valve.Engaged ? " held" : "");
 
         Transform generated;
 
         void Awake() => Build(randomSeedOnStart ? Environment.TickCount & 0x7fffffff : seed);
+
+        void Start()
+        {
+            // After every Awake: RovVisuals hides the renderers that exist under the vehicle when it wakes.
+            var vehicle = FindFirstObjectByType<RovVehicle>();
+            if (vehicle != null) Arm = TacArm.Attach(vehicle);
+        }
 
         public void BuildRandom() => Build(Environment.TickCount & 0x7fffffff);
 
@@ -217,8 +234,12 @@ namespace TacSim
             foreach (float z in new[] { -0.18f, 0.18f })
                 TacMaterials.Primitive(PrimitiveType.Cylinder, "Steel plate", root, new Vector3(x, h + 0.0004f, z),
                     new Vector3(0.12f, 0.0004f, 0.12f), steel, false);
+            // No collider: a scaled cylinder gets a Ø100 mm sphere that the vehicle could not land on.
             DockPuck = TacMaterials.Primitive(PrimitiveType.Cylinder, "Primary power puck (BB9862)", root,
-                new Vector3(0, h + 0.005f, 0), new Vector3(0.1f, 0.005f, 0.1f), puck).transform;
+                new Vector3(0, h + 0.005f, 0), new Vector3(0.1f, 0.005f, 0.1f), puck, false).transform;
+            Dock = root.gameObject.AddComponent<TacDock>();
+            Dock.plateTop = h;
+            Dock.puck = DockPuck;
 
             // Corner order ASSUMED: 28 back-left, 7 back-right, 19 front-right, 96 front-left (+Z = back).
             Vector2[] corners = { new(-1, 1), new(1, 1), new(1, -1), new(-1, -1) };
@@ -235,6 +256,7 @@ namespace TacSim
             var root = new GameObject("Subsea structure").transform;
             root.SetParent(generated, false);
             root.SetLocalPositionAndRotation(structurePosition, Quaternion.Euler(0, structureYaw, 0));
+            Structure = root;
             Material yellow = TacMaterials.Lit("TAC structure", TacMaterials.StructureYellow, 0.1f, 0.35f);
             float w = structureSize.x / 2, height = structureSize.y, d = structureSize.z / 2;
             const float beam = 0.08f;
@@ -259,10 +281,12 @@ namespace TacSim
                 new Vector3(-w / 2, 0.75f, -d), new Vector3(w, 0.9f, 0.02f), yellow);
 
             // Valve A on the vertical surface (facing −Z), valve B on the horizontal surface (facing up).
+            // Both start near S (0°…30°) so that opening them is a real task. Valve B sits off-centre so a
+            // vehicle hovering over it with the arm pointing down keeps clear of the top beams.
             ValveA = TacValve.Create(root, "Valve A", new Vector3(-w / 2, 0.75f, -d - 0.01f),
-                Quaternion.Euler(-90, 0, 0), Lerp(rng, 0, 90));
-            ValveB = TacValve.Create(root, "Valve B", new Vector3(w / 2, shelfY + 0.01f, 0),
-                Quaternion.identity, Lerp(rng, 0, 90));
+                Quaternion.Euler(-90, 0, 0), Lerp(rng, 0, 30));
+            ValveB = TacValve.Create(root, "Valve B", new Vector3(w / 2, shelfY + 0.01f, 0.15f),
+                Quaternion.identity, Lerp(rng, 0, 30));
 
             // Candidate marker slots; some deliberately hard to see (underside, inside, rear).
             Quaternion up = Quaternion.identity, front = Quaternion.Euler(-90, 0, 0), back = Quaternion.Euler(90, 0, 0);
