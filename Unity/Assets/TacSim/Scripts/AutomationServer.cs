@@ -109,8 +109,8 @@ namespace TacSim
                 AutomationRequest request = JsonUtility.FromJson<AutomationRequest>(pending.Json);
                 if (request == null) throw new ArgumentException("request must be a JSON object");
                 string action = string.IsNullOrWhiteSpace(request.action) ? "observe" : request.action.ToLowerInvariant();
-                string error = ApplyAction(action, request);
-                pending.Response = JsonUtility.ToJson(BuildResponse(request, error));
+                string error = ApplyAction(action, request) ?? ApplySensorSettings(request);
+                pending.Response = JsonUtility.ToJson(BuildResponse(action, request, error));
             }
             catch (Exception exception)
             {
@@ -131,6 +131,7 @@ namespace TacSim
             switch (action)
             {
                 case "observe":
+                case "describe":
                     break;
                 case "command":
                     vehicle.SetCommand(new Vector3(request.sway, request.heave, request.surge),
@@ -138,6 +139,8 @@ namespace TacSim
                     lastCommandTime = Time.unscaledTime;
                     break;
                 case "reset":
+                    // A non-zero seed redraws every sensor's unit errors for the new episode.
+                    if (request.seed != 0 && SensorSuite.Instance != null) SensorSuite.Instance.Reseed(request.seed);
                     vehicle.ResetVehicle();
                     lastCommandTime = Time.unscaledTime;
                     break;
@@ -159,8 +162,8 @@ namespace TacSim
                 int mode = request.camera.ToLowerInvariant() switch
                 {
                     "chase" => 0,
-                    "forward" => 1,
-                    "downward" => 2,
+                    "forward" or "explorehd" => 1,
+                    "downward" or "fisheye" => 2,
                     _ => -1
                 };
                 if (mode < 0) return $"unknown camera '{request.camera}'";
@@ -169,7 +172,34 @@ namespace TacSim
             return null;
         }
 
-        AutomationResponse BuildResponse(AutomationRequest request, string error)
+        static string ApplySensorSettings(AutomationRequest request)
+        {
+            SensorSuite sensors = SensorSuite.Instance;
+            if (sensors == null) return null;
+            if (!string.IsNullOrWhiteSpace(request.sensor_noise))
+            {
+                string noise = request.sensor_noise.ToLowerInvariant();
+                if (noise != "on" && noise != "off") return $"sensor_noise must be 'on' or 'off', not '{request.sensor_noise}'";
+                sensors.SetNoise(noise == "on");
+            }
+            if (sensors.Sonar != null)
+            {
+                if (!string.IsNullOrWhiteSpace(request.sonar_band))
+                {
+                    switch (request.sonar_band.ToLowerInvariant())
+                    {
+                        case "700": case "high": sensors.Sonar.band = ImagingSonar.Band.High700kHz; break;
+                        case "400": case "low": sensors.Sonar.band = ImagingSonar.Band.Low400kHz; break;
+                        default: return $"sonar_band must be '700' or '400', not '{request.sonar_band}'";
+                    }
+                    sensors.Sonar.SetRange(sensors.Sonar.range);
+                }
+                if (request.sonar_range > 0) sensors.Sonar.SetRange(request.sonar_range);
+            }
+            return null;
+        }
+
+        AutomationResponse BuildResponse(string action, AutomationRequest request, string error)
         {
             Rigidbody body = vehicle.Body;
             var response = new AutomationResponse
@@ -191,6 +221,26 @@ namespace TacSim
                 peak_collision_force = vehicle.PeakCollisionForce,
                 camera = new[] { "chase", "forward", "downward" }[view.Mode]
             };
+            SensorSuite sensors = SensorSuite.Instance;
+            if (sensors != null)
+            {
+                response.sensors = SensorTelemetry.Read(sensors, request.sonar_image);
+                if (action == "describe") response.sensor_info = SensorTelemetry.Describe(sensors);
+                if (request.camera_images is { Length: > 0 } names)
+                {
+                    int width = Mathf.Clamp(request.image_width > 0 ? request.image_width : 320, 64, 1920);
+                    int height = Mathf.Clamp(request.image_height > 0 ? request.image_height : 180, 64, 1080);
+                    int imageQuality = Mathf.Clamp(request.jpeg_quality > 0 ? request.jpeg_quality : 75, 20, 95);
+                    response.images = new CameraImage[names.Length];
+                    for (int i = 0; i < names.Length; i++)
+                    {
+                        FisheyeCameraSensor camera = SensorTelemetry.FindCamera(sensors, names[i])
+                            ?? throw new ArgumentException($"unknown sensor camera '{names[i]}'; use explorehd or fisheye");
+                        response.images[i] = new CameraImage { name = names[i], model = camera.model, width = width, height = height };
+                        response.images[i].jpeg_base64 = camera.CaptureJpeg(width, height, imageQuality, out response.images[i].time);
+                    }
+                }
+            }
             if (request.capture)
             {
                 response.image_width = Mathf.Clamp(request.image_width > 0 ? request.image_width : 320, 64, 1280);
@@ -308,6 +358,12 @@ namespace TacSim
             public int image_width;
             public int image_height;
             public int jpeg_quality;
+            public string[] camera_images;
+            public bool sonar_image;
+            public float sonar_range;
+            public string sonar_band;
+            public string sensor_noise;
+            public int seed;
         }
 
         [Serializable]
@@ -333,6 +389,9 @@ namespace TacSim
             public int image_height;
             public double image_time;
             public string image_jpeg_base64;
+            public SensorReadings sensors;
+            public CameraImage[] images;
+            public SensorInfo[] sensor_info;
         }
 
         [Serializable]

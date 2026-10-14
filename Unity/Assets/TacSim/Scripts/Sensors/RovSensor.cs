@@ -79,8 +79,16 @@ namespace TacSim
             Vector3 right = rotation * Vector3.right;
             Vector3 up = rotation * Vector3.up;
             float yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
-            float pitch = Mathf.Asin(Mathf.Clamp(forward.y, -1, 1)) * Mathf.Rad2Deg;
+            // atan2 stays accurate near vertical, where asin loses float precision.
+            float pitch = Mathf.Atan2(forward.y, new Vector2(forward.x, forward.z).magnitude) * Mathf.Rad2Deg;
             float roll = Mathf.Atan2(-right.y, up.y) * Mathf.Rad2Deg;
+            if (Mathf.Abs(forward.y) > 0.9999f)
+            {
+                // Looking straight down or up: put all heading into yaw, taken from the up vector.
+                float sign = Mathf.Sign(forward.y);
+                yaw = Mathf.Atan2(sign * -up.x, sign * -up.z) * Mathf.Rad2Deg;
+                roll = 0;
+            }
             return new Vector3(Mathf.Repeat(yaw, 360), pitch, roll);
         }
 

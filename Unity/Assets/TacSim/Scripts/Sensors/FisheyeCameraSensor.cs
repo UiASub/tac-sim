@@ -204,7 +204,8 @@ namespace TacSim
             var image = new Texture2D(width, height, TextureFormat.RGB24, false);
             try
             {
-                Graphics.Blit(Output, target);
+                // Match the API's pilot-camera captures, which clients flip from a bottom-left origin.
+                Graphics.Blit(Output, target, new Vector2(1, -1), new Vector2(0, 1));
                 RenderTexture.active = target;
                 image.ReadPixels(new Rect(0, 0, width, height), 0, 0);
                 image.Apply(false);

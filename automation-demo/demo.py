@@ -39,11 +39,23 @@ def overlay(image: np.ndarray, state: dict, automatic: bool) -> None:
         f"depth {state['depth']:.2f} m  throttle {state['throttle']:.0%}",
         f"collision {collision}  force {state['collision_force']:.1f} N  peak {state['peak_collision_force']:.1f} N",
         f"mode {'yellow-target auto' if automatic else 'manual/latching'}",
+        *sensor_lines(state.get("sensors")),
         "W/S surge  A/D sway  I/K heave  Q/E yaw  0 neutral  M auto  R reset  ESC quit",
     )
     for row, text in enumerate(lines):
         cv2.putText(image, text, (10, 24 + row * 23), cv2.FONT_HERSHEY_SIMPLEX,
                     0.48, (235, 245, 245), 1, cv2.LINE_AA)
+
+
+def sensor_lines(sensors: dict | None) -> tuple[str, ...]:
+    if not sensors:
+        return ()
+    imu, dvl, pressure = sensors["imu"], sensors["dvl"], sensors["pressure"]
+    lock = f"v {dvl['vx']:+.2f} {dvl['vy']:+.2f} {dvl['vz']:+.2f} m/s" if dvl["velocity_valid"] else "no lock"
+    return (
+        f"Bar30 {pressure['depth_m']:.2f} m  VN-100 yaw {imu['yaw']:+.1f}  rate {imu['angular_rate']['z']:+.2f} rad/s",
+        f"DVL alt {dvl['altitude']:.2f} m  {lock}",
+    )
 
 
 def main() -> None:
@@ -58,8 +70,10 @@ def main() -> None:
         sim.request(action="reset", camera="forward")
         while True:
             started = time.monotonic()
-            state = sim.command(**command)
+            state = sim.command(**command, sonar_image=True)
             image = sim.decode_image(state)
+            sonar = state["sensors"]["sonar"]
+            cv2.imshow("Sonoptix ECHO", sim.sonar_fan(sim.decode_sonar(state), sonar["horizontal_aperture"]))
             image, target_x, target_y, found = yellow_target(image)
             if automatic:
                 command["yaw"] = float(np.clip(target_x * 0.8, -0.65, 0.65)) if found else 0.25
