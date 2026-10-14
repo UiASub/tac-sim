@@ -22,6 +22,11 @@ namespace TacSim
         public Vector3 centreOfMass = new(0, -0.08f, 0);
         public Vector3 centreOfBuoyancy = new(0, 0.08f, 0);
         public Vector3 current;
+        [Header("Gentle pool current (world-space m/s)")]
+        public bool simulateWaterCurrent = true;
+        [Range(0, 0.5f)] public float currentSpeed = 5f;
+        public Vector2 currentPoolSize = new(16, 24);
+        public float currentPoolFloor = -5;
         public Vector3 linearDrag = new(12, 18, 10);
         public Vector3 quadraticDrag = new(35, 45, 25);
         public float angularDrag = 12;
@@ -121,6 +126,13 @@ namespace TacSim
                 -velocity.z * (linear.z + quadratic.z * Mathf.Abs(velocity.z)));
         }
 
+        public Vector3 WaterVelocityAt(Vector3 position, float time)
+        {
+            return current + (simulateWaterCurrent
+                ? WaterCurrent.Sample(position, time, currentSpeed, currentPoolSize, currentPoolFloor, waterSurface)
+                : Vector3.zero);
+        }
+
         void FixedUpdate()
         {
             // Use the simulation pose; the interpolated Transform can still show a pre-reset frame.
@@ -128,7 +140,8 @@ namespace TacSim
             float submerged = Mathf.Clamp01((waterSurface - Body.position.y) / hullHeight + 0.5f);
             Body.AddForceAtPosition(-Physics.gravity * (waterDensity * displacedVolume * submerged),
                 Body.position + rotation * centreOfBuoyancy);
-            Vector3 relativeVelocity = Quaternion.Inverse(rotation) * (Body.linearVelocity - current);
+            Vector3 relativeVelocity = Quaternion.Inverse(rotation)
+                * (Body.linearVelocity - WaterVelocityAt(Body.position, Time.fixedTime));
             Body.AddRelativeForce(Drag(relativeVelocity, linearDrag, quadraticDrag) * submerged);
             Body.AddTorque(-Body.angularVelocity * (angularDrag * submerged));
 
