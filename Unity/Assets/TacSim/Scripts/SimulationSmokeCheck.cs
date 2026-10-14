@@ -57,6 +57,10 @@ namespace TacSim
             float expectedAltitude = dvl.transform.position.y + 5;
             if (!Check(dvl.VelocityValid && Mathf.Abs(dvl.Altitude - expectedAltitude) < 0.1f
                 && dvl.Velocity.magnitude < 0.05f && dvl.PingRate > 10, "DVL locks on the pool floor at rest")) yield break;
+            PressureSensor pressure = sensors.Pressure;
+            float sensorDepth = vehicle.waterSurface - pressure.transform.position.y;
+            if (!Check(Mathf.Abs(pressure.Depth - sensorDepth) < 0.05f && pressure.Pressure > 1200
+                && Mathf.Abs(pressure.Temperature - pressure.waterTemperature) < 3, "pressure sensor reports depth and temperature")) yield break;
             vehicle.SetCommand(Vector3.zero, new Vector3(1, 0.5f, -1));
             if (!Check(vehicle.RotationCommand == new Vector3(0, 0.5f, 0), "command API rejects pitch and roll without reducing yaw")) yield break;
             vehicle.SetCommand(Vector3.zero, Vector3.zero);

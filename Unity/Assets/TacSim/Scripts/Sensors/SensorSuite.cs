@@ -24,6 +24,7 @@ namespace TacSim
         public FisheyeCameraSensor ForwardCamera { get; private set; }
         public FisheyeCameraSensor DownwardCamera { get; private set; }
         public DopplerVelocityLog Dvl { get; private set; }
+        public PressureSensor Pressure { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -91,6 +92,12 @@ namespace TacSim
             Dvl = Mount<DopplerVelocityLog>("DVL A50", new Vector3(0, -0.18f, -0.05f), Vector3.zero,
                 dvl => dvl.model = "Water Linked DVL A50");
 
+            // Penetrator on the rear end cap of the electronics enclosure.
+            bool bar100 = TryGetString(args, "-pressureSensor", out string variant)
+                && variant.Equals("bar100", StringComparison.OrdinalIgnoreCase);
+            Pressure = Mount<PressureSensor>("Bar30/Bar100 depth sensor", new Vector3(0, 0.06f, -0.24f), Vector3.zero,
+                sensor => sensor.variant = bar100 ? PressureSensorVariant.Bar100 : PressureSensorVariant.Bar30);
+
             vehicle.VehicleReset += ResetSensors;
             if (Array.IndexOf(args, "-noSensorNoise") >= 0) SetNoise(false);
             Debug.Log($"TAC_SENSORS_READY: {sensors.Count} sensors, seed {Seed}");
@@ -142,6 +149,13 @@ namespace TacSim
         }
 
         static int SensorSeed(int seed, int index) => unchecked(seed * 486187739 + (index + 1) * 16777619);
+
+        public static bool TryGetString(string[] args, string name, out string value)
+        {
+            int index = Array.IndexOf(args, name);
+            value = index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+            return value != null;
+        }
 
         public static bool TryGetInt(string[] args, string name, out int value)
         {
