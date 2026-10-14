@@ -17,6 +17,7 @@ Shader "Hidden/TacSim/FisheyeProjection"
             SAMPLER(sampler_LinearClamp);
             float4 _Projection; // focal length px, max field angle rad, width px, height px
             float4 _Sensor;     // noise, vignetting, frame seed, gain
+            float _PortRefraction; // 1 for a dome port, ~1.333 for an in-air lens behind a flat port
 
             struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; };
 
@@ -62,7 +63,9 @@ Shader "Hidden/TacSim/FisheyeProjection"
                 float inside = saturate((_Projection.y - theta) * _Projection.x + 0.5);
                 if (inside <= 0) return float4(0, 0, 0, 1);
                 float2 heading = radius > 1e-4 ? pixel / radius : float2(0, 0);
-                float3 direction = float3(heading * sin(theta), cos(theta));
+                // Snell refraction at a flat port: the in-air ray angle maps to a narrower one in water.
+                float water = asin(sin(min(theta, 1.5707963)) / max(_PortRefraction, 1));
+                float3 direction = float3(heading * sin(water), cos(water));
                 float3 color = SampleFaces(direction) * _Sensor.w;
                 float edge = saturate(theta / max(_Projection.y, 1e-3));
                 color *= (1 - _Sensor.y * edge * edge) * inside;

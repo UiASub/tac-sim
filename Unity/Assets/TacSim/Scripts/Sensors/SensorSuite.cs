@@ -21,6 +21,7 @@ namespace TacSim
         public IReadOnlyList<RovSensor> Sensors => sensors;
 
         public FisheyeCameraSensor ForwardCamera { get; private set; }
+        public FisheyeCameraSensor DownwardCamera { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -61,6 +62,27 @@ namespace TacSim
                     camera.latency = 0.1f;
                     camera.sensorNoise = 0.012f;
                     camera.vignetting = 0.3f;
+                });
+
+            DownwardCamera = Mount<FisheyeCameraSensor>("IMX307 fisheye downward camera",
+                new Vector3(0, -0.15f, 0.15f), new Vector3(90, 0, 0), camera =>
+                {
+                    // Sony IMX307 1/2.8" (2.9 µm pixels) behind a 1.5 mm 180° fisheye; the "3MP"
+                    // stream is the ISP's 2304×1296 upscale, so f = 1.5 mm / 2.9 µm × 1.2 = 621 px.
+                    // The 180° image circle overfills the sensor height and leaves black sides.
+                    camera.model = "WGWK IMX307 3MP PoE, 1.5 mm 180°";
+                    camera.mounting = "down, top = fwd";
+                    camera.nativeWidth = 2304;
+                    camera.nativeHeight = 1296;
+                    camera.frameRate = 25;
+                    camera.focalLengthPixels = 1.5f / 0.0029f * 2304 / 1920;
+                    camera.imageCircle = 180;
+                    // Assumes a dome port; set 1.333 for a flat port, which narrows the view to ~97°.
+                    camera.portRefraction = 1;
+                    // RTSP/H.265 IP cameras typically add 150-300 ms before the frame is decoded.
+                    camera.latency = 0.2f;
+                    camera.sensorNoise = 0.02f;
+                    camera.vignetting = 0.45f;
                 });
 
             vehicle.VehicleReset += ResetSensors;

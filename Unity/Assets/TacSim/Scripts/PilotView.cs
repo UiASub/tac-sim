@@ -10,7 +10,7 @@ namespace TacSim
         public int Mode { get; private set; }
         // Used only by the opt-in model screenshot runner.
         public bool ModelInspection { get; set; }
-        static readonly string[] Modes = { "CHASE / TRAINING", "EXPLOREHD FORWARD", "DOWNWARD CAMERA" };
+        static readonly string[] Modes = { "CHASE / TRAINING", "EXPLOREHD FORWARD", "IMX307 FISHEYE DOWN" };
         GUIStyle title, label, small;
         Texture2D panel;
         int pilotMask = -1;
@@ -22,7 +22,7 @@ namespace TacSim
             {
                 SensorSuite sensors = SensorSuite.Instance;
                 if (sensors == null || ModelInspection) return null;
-                return Mode == 1 ? sensors.ForwardCamera : null;
+                return Mode switch { 1 => sensors.ForwardCamera, 2 => sensors.DownwardCamera, _ => null };
             }
         }
 

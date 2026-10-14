@@ -96,6 +96,13 @@ namespace TacSim
             if (!Check(view.ActiveSensorCamera == sensors.ForwardCamera && sensors.ForwardCamera.Output != null
                 && MeanBrightness(sensors.ForwardCamera.Output) > 0.02f, "exploreHD renders through its fisheye model")) yield break;
             view.CycleCamera();
+            yield return new WaitForSeconds(0.5f);
+            if (!Check(view.ActiveSensorCamera == sensors.DownwardCamera && sensors.DownwardCamera.Output != null
+                && MeanBrightness(sensors.DownwardCamera.Output) > 0.02f, "IMX307 fisheye renders downward")) yield break;
+            if (!Check(Mathf.Abs(sensors.DownwardCamera.FieldOfView.x - 180) < 0.5f
+                && Mathf.Abs(sensors.DownwardCamera.FieldOfView.y - 120) < 2, "IMX307 180° circle crops to the sensor")) yield break;
+            view.SetMode(1);
+            view.CycleCamera();
             view.CycleCamera();
             if (view.appearance != null)
             {

@@ -20,6 +20,8 @@ namespace TacSim
         public float focalLengthPixels;
         [Tooltip("Lens image circle in degrees; a circle smaller than the sensor leaves black edges")]
         public float imageCircle = 180;
+        [Tooltip("1 for a dome port or a lens specified in water; 1.333 for an in-air lens behind a flat port")]
+        public float portRefraction = 1;
         public string mounting = "forward";
 
         [Header("Imaging pipeline")]
@@ -57,6 +59,8 @@ namespace TacSim
             : 0.5f * Mathf.Sqrt(nativeWidth * nativeWidth + nativeHeight * nativeHeight) / (diagonalFov * 0.5f * Mathf.Deg2Rad);
         float FocalRender => FocalNative * renderWidth / nativeWidth;
         float MaxTheta => imageCircle * 0.5f * Mathf.Deg2Rad;
+        // Snell's law at a flat port compresses the in-air field into a narrower cone in water.
+        float WaterAngle(float airAngle) => Mathf.Asin(Mathf.Sin(airAngle) / Mathf.Max(1, portRefraction));
         int DelayFrames => Mathf.Max(0, Mathf.RoundToInt(latency * frameRate));
         public bool Active => Time.unscaledTime < activeUntil;
 
@@ -66,7 +70,11 @@ namespace TacSim
             get
             {
                 float f = FocalNative;
-                float Angle(float halfPixels) => 2 * Mathf.Min(halfPixels / f, MaxTheta) * Mathf.Rad2Deg;
+                float Angle(float halfPixels)
+                {
+                    float air = Mathf.Min(halfPixels / f, MaxTheta);
+                    return 2 * (portRefraction > 1 ? WaterAngle(Mathf.Min(air, Mathf.PI / 2)) : air) * Mathf.Rad2Deg;
+                }
                 return new Vector3(Angle(nativeWidth / 2f), Angle(nativeHeight / 2f),
                     Angle(0.5f * Mathf.Sqrt(nativeWidth * nativeWidth + nativeHeight * nativeHeight)));
             }
@@ -117,6 +125,7 @@ namespace TacSim
             frameTimes[newest] = Time.timeAsDouble;
             SampleTime = Time.timeAsDouble;
             projection.SetVector("_Projection", new Vector4(FocalRender, MaxTheta, renderWidth, RenderHeight));
+            projection.SetFloat("_PortRefraction", Mathf.Max(1, portRefraction));
             projection.SetVector("_Sensor", new Vector4(noiseEnabled ? sensorNoise : 0, vignetting,
                 Noise.Uniform(0, 1000), gain));
             RenderTexture previous = RenderTexture.active;
@@ -213,7 +222,8 @@ namespace TacSim
         {
             Vector3 fov = FieldOfView;
             text.AppendLine($"{SensorOverlay.Header("CAMERA")}  {model}  ({mounting})");
-            text.AppendLine($"  {nativeWidth}×{nativeHeight} @ {frameRate:0} fps   FOV {fov.x:0}°×{fov.y:0}° ({fov.z:0}° diag)");
+            text.AppendLine($"  {nativeWidth}×{nativeHeight} @ {frameRate:0} fps   FOV {fov.x:0}°×{fov.y:0}° ({fov.z:0}° diag)"
+                + (portRefraction > 1 ? "  flat port" : ""));
             string state = Active ? $"live, frame {Time.timeAsDouble - OutputTime:0.00} s old" : "idle";
             text.AppendLine($"  latency {latency * 1000:0} ms   {state}");
         }
