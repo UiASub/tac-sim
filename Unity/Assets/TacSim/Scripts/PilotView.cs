@@ -13,7 +13,7 @@ namespace TacSim
         static readonly string[] Modes = { "CHASE / TRAINING", "EXPLOREHD FORWARD", "IMX307 FISHEYE DOWN" };
         GUIStyle title, label, small;
         Texture2D panel;
-        int pilotMask = -1;
+        int? pilotMask;
 
         // The simulated payload camera behind the current view, or null for rendered views.
         public FisheyeCameraSensor ActiveSensorCamera
@@ -38,10 +38,10 @@ namespace TacSim
         void UpdateCamera()
         {
             Transform rov = vehicle.transform;
-            if (pilotMask == -1) pilotMask = pilotCamera.cullingMask;
+            pilotMask ??= pilotCamera.cullingMask;
             FisheyeCameraSensor sensorCamera = ActiveSensorCamera;
             // The sensor draws its own feed; the pilot camera only follows it for the water effects.
-            pilotCamera.cullingMask = sensorCamera != null ? 0 : pilotMask;
+            pilotCamera.cullingMask = sensorCamera != null ? 0 : pilotMask.Value;
             if (sensorCamera != null)
             {
                 sensorCamera.KeepActive();
