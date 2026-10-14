@@ -39,6 +39,7 @@ namespace TacSim
         public bool IsColliding => contacts.Count > 0;
         public float CollisionForce { get; private set; }
         public float PeakCollisionForce { get; private set; }
+        public event Action VehicleReset;
         Vector3 spawnPosition;
         Quaternion spawnRotation;
         float[] forces;
@@ -89,6 +90,7 @@ namespace TacSim
             CollisionForce = 0;
             PeakCollisionForce = 0;
             Armed = true;
+            VehicleReset?.Invoke();
         }
 
         void OnCollisionEnter(Collision collision) => RecordCollision(collision);

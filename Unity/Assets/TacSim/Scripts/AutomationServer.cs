@@ -195,8 +195,12 @@ namespace TacSim
             {
                 response.image_width = Mathf.Clamp(request.image_width > 0 ? request.image_width : 320, 64, 1280);
                 response.image_height = Mathf.Clamp(request.image_height > 0 ? request.image_height : 180, 64, 720);
-                response.image_jpeg_base64 = CaptureJpeg(response.image_width, response.image_height,
-                    Mathf.Clamp(request.jpeg_quality > 0 ? request.jpeg_quality : 75, 20, 95));
+                int quality = Mathf.Clamp(request.jpeg_quality > 0 ? request.jpeg_quality : 75, 20, 95);
+                FisheyeCameraSensor sensorCamera = view.ActiveSensorCamera;
+                response.image_time = Time.timeAsDouble;
+                response.image_jpeg_base64 = sensorCamera != null
+                    ? sensorCamera.CaptureJpeg(response.image_width, response.image_height, quality, out response.image_time)
+                    : CaptureJpeg(response.image_width, response.image_height, quality);
             }
             return response;
         }
@@ -327,6 +331,7 @@ namespace TacSim
             public string camera;
             public int image_width;
             public int image_height;
+            public double image_time;
             public string image_jpeg_base64;
         }
 

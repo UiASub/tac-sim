@@ -49,6 +49,8 @@ namespace TacSim
         {
             var model = Instantiate(prefab, transform, false);
             model.name = prefab.name;
+            // Detail switches can happen after the sensor suite assigned the vehicle layer.
+            SensorSuite.SetLayer(model, gameObject.layer);
             // Export puts the domed enclosure toward -Z; use that end as vehicle forward.
             model.transform.localRotation = Quaternion.Euler(0, 180, 0) * model.transform.localRotation;
             // CAD origin is not the hull center. Match both variants using their common bounds.

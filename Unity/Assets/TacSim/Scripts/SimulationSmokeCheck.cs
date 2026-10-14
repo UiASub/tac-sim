@@ -90,6 +90,11 @@ namespace TacSim
             view.CycleCamera();
             yield return null;
             if (!Check(view.Mode == 1, "camera switch")) yield break;
+            SensorSuite sensors = SensorSuite.Instance;
+            if (!Check(sensors != null && sensors.ForwardCamera != null, "sensor suite installed")) yield break;
+            yield return new WaitForSeconds(0.5f);
+            if (!Check(view.ActiveSensorCamera == sensors.ForwardCamera && sensors.ForwardCamera.Output != null
+                && MeanBrightness(sensors.ForwardCamera.Output) > 0.02f, "exploreHD renders through its fisheye model")) yield break;
             view.CycleCamera();
             view.CycleCamera();
             if (view.appearance != null)
@@ -170,6 +175,25 @@ namespace TacSim
                 for (int frame = 0; frame < 120; frame++) { yield return null; elapsed += Time.unscaledDeltaTime; }
                 Debug.Log($"TAC_RENDER_SAMPLE: {120 / elapsed:F1} fps over 120 frames at {Screen.width}x{Screen.height}");
             }
+            int sensorCaptures = Array.IndexOf(args, "-captureSensors");
+            if (sensorCaptures >= 0 && sensorCaptures + 1 < args.Length)
+            {
+                string folder = args[sensorCaptures + 1];
+                Directory.CreateDirectory(folder);
+                vehicle.ResetVehicle();
+                vehicle.SetArmed(false);
+                sensors.TelemetryVisible = true;
+                for (int mode = 0; mode < 3; mode++)
+                {
+                    view.SetMode(mode);
+                    yield return new WaitForSeconds(1);
+                    yield return new WaitForEndOfFrame();
+                    ScreenCapture.CaptureScreenshot(Path.Combine(folder, $"sensor-view-{mode}.png"));
+                    yield return new WaitForSeconds(0.5f);
+                }
+                view.SetMode(0);
+                vehicle.ResetVehicle();
+            }
             int capture = Array.IndexOf(args, "-captureScreenshot");
             if (capture >= 0 && capture + 1 < args.Length)
             {
@@ -179,6 +203,28 @@ namespace TacSim
             }
             Debug.Log("TAC_SMOKE_PASSED");
             Application.Quit(0);
+        }
+
+        static float MeanBrightness(RenderTexture source)
+        {
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture small = RenderTexture.GetTemporary(16, 16, 0, RenderTextureFormat.ARGB32);
+            var pixels = new Texture2D(16, 16, TextureFormat.RGB24, false);
+            try
+            {
+                Graphics.Blit(source, small);
+                RenderTexture.active = small;
+                pixels.ReadPixels(new Rect(0, 0, 16, 16), 0, 0);
+                float sum = 0;
+                foreach (Color color in pixels.GetPixels()) sum += color.grayscale;
+                return sum / 256;
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(small);
+                Destroy(pixels);
+            }
         }
 
         static bool Check(bool passed, string condition)

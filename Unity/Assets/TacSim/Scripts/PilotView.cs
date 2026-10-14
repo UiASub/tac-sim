@@ -10,9 +10,21 @@ namespace TacSim
         public int Mode { get; private set; }
         // Used only by the opt-in model screenshot runner.
         public bool ModelInspection { get; set; }
-        static readonly string[] Modes = { "CHASE / TRAINING", "FORWARD CAMERA", "DOWNWARD CAMERA" };
+        static readonly string[] Modes = { "CHASE / TRAINING", "EXPLOREHD FORWARD", "DOWNWARD CAMERA" };
         GUIStyle title, label, small;
         Texture2D panel;
+        int pilotMask = -1;
+
+        // The simulated payload camera behind the current view, or null for rendered views.
+        public FisheyeCameraSensor ActiveSensorCamera
+        {
+            get
+            {
+                SensorSuite sensors = SensorSuite.Instance;
+                if (sensors == null || ModelInspection) return null;
+                return Mode == 1 ? sensors.ForwardCamera : null;
+            }
+        }
 
         public void CycleCamera() => Mode = (Mode + 1) % Modes.Length;
         public void SetMode(int mode)
@@ -26,7 +38,16 @@ namespace TacSim
         void UpdateCamera()
         {
             Transform rov = vehicle.transform;
-            if (Mode == 0)
+            if (pilotMask == -1) pilotMask = pilotCamera.cullingMask;
+            FisheyeCameraSensor sensorCamera = ActiveSensorCamera;
+            // The sensor draws its own feed; the pilot camera only follows it for the water effects.
+            pilotCamera.cullingMask = sensorCamera != null ? 0 : pilotMask;
+            if (sensorCamera != null)
+            {
+                sensorCamera.KeepActive();
+                pilotCamera.transform.SetPositionAndRotation(sensorCamera.transform.position, sensorCamera.transform.rotation);
+            }
+            else if (Mode == 0)
             {
                 Quaternion yaw = Quaternion.Euler(0, rov.eulerAngles.y, 0);
                 Vector3 target = rov.position + yaw * new Vector3(0.65f, 0.45f, ModelInspection ? 0.95f : -0.95f);
@@ -58,6 +79,8 @@ namespace TacSim
             GUI.matrix = Matrix4x4.Scale(Vector3.one * scale);
             float width = Screen.width / scale;
             float height = Screen.height / scale;
+            FisheyeCameraSensor sensorCamera = ActiveSensorCamera;
+            if (sensorCamera != null) SensorOverlay.DrawVideo(sensorCamera.Output, width, height);
             GUI.DrawTexture(new Rect(22, 22, 365, 150), panel);
             GUI.Label(new Rect(40, 32, 340, 40), "TAC / ROV TRAINING", title);
             GUI.Label(new Rect(40, 74, 340, 25), $"{Modes[Mode]}    •    {(vehicle.Armed ? "ARMED" : "THRUST CUT")}", small);
@@ -66,12 +89,13 @@ namespace TacSim
             GUI.Label(new Rect(40, 137, 340, 25), $"HEADING  {vehicle.transform.eulerAngles.y:000}°     THRUST  {vehicle.Throttle:P0}{contact}", small);
             GUI.DrawTexture(new Rect(22, height - 113, width - 44, 91), panel);
             GUI.Label(new Rect(40, height - 105, width - 80, 24), "PRACTICE  /  Approach the yellow landing pad. Use the downward camera to align.", label);
-            GUI.Label(new Rect(40, height - 75, width - 80, 22), "WASD move   •   SPACE / CTRL depth   •   Q / E yaw   •   SHIFT precision   •   V camera   •   L lights", small);
+            GUI.Label(new Rect(40, height - 75, width - 80, 22), "WASD move   •   SPACE / CTRL depth   •   Q / E yaw   •   SHIFT precision   •   V camera   •   L lights   •   T sensors", small);
             GUI.Label(new Rect(40, height - 51, width - 80, 22), "R reset   •   ESC thrust cut / arm   |   Gamepad: sticks move / turn, triggers depth, A camera, B arm, START reset", small);
             GUI.Label(new Rect(width / 2 - 6, height / 2 - 13, 25, 30), "+", label);
             DrawAppearanceMenu(width);
             var visuals = vehicle.GetComponent<RovVisuals>();
             if (visuals != null && GUI.Button(new Rect(22, 180, 260, 32), $"MALSTRØM / {visuals.DetailName} [M]")) visuals.Toggle();
+            SensorOverlay.DrawTelemetry(SensorSuite.Instance, small, panel, 222, height - 125);
             GUI.matrix = Matrix4x4.identity;
         }
 
