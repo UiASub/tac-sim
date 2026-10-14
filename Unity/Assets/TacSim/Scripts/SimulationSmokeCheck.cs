@@ -61,6 +61,10 @@ namespace TacSim
             float sensorDepth = vehicle.waterSurface - pressure.transform.position.y;
             if (!Check(Mathf.Abs(pressure.Depth - sensorDepth) < 0.05f && pressure.Pressure > 1200
                 && Mathf.Abs(pressure.Temperature - pressure.waterTemperature) < 3, "pressure sensor reports depth and temperature")) yield break;
+            InertialSensor imu = sensors.Imu;
+            if (!Check(Mathf.Abs(imu.Acceleration.z + 9.81f) < 0.05f && imu.AngularRate.magnitude < 0.01f
+                && Mathf.Abs(Mathf.DeltaAngle(imu.YawPitchRoll.x, vehicle.Body.rotation.eulerAngles.y)) < 8
+                && Mathf.Abs(imu.MagneticField.z - imu.earthField.z) < 0.05f, "IMU at rest reads gravity on -Z, heading and field")) yield break;
             vehicle.SetCommand(Vector3.zero, new Vector3(1, 0.5f, -1));
             if (!Check(vehicle.RotationCommand == new Vector3(0, 0.5f, 0), "command API rejects pitch and roll without reducing yaw")) yield break;
             vehicle.SetCommand(Vector3.zero, Vector3.zero);
@@ -89,6 +93,9 @@ namespace TacSim
             vehicle.SetCommand(Vector3.zero, Vector3.up);
             yield return new WaitForSeconds(1);
             if (!Check(Quaternion.Angle(vehicle.Body.rotation, Quaternion.identity) > 5, "yaw torque")) yield break;
+            if (!Check(Mathf.Abs(imu.AngularRate.z - vehicle.Body.angularVelocity.y) < 0.05f && imu.AngularRate.z > 0.05f
+                && Mathf.Abs(Mathf.DeltaAngle(imu.YawPitchRoll.x, vehicle.Body.rotation.eulerAngles.y)) < 15,
+                "IMU yaw rate is positive clockwise (FRD +Z) and heading tracks the hull")) yield break;
             if (!Check(Vector3.Angle(vehicle.Body.rotation * Vector3.up, Vector3.up) < 0.01f,
                 "hull stays level while yawing")) yield break;
             vehicle.SetArmed(false);

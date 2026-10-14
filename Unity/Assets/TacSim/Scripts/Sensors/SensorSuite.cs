@@ -25,6 +25,7 @@ namespace TacSim
         public FisheyeCameraSensor DownwardCamera { get; private set; }
         public DopplerVelocityLog Dvl { get; private set; }
         public PressureSensor Pressure { get; private set; }
+        public InertialSensor Imu { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -97,6 +98,10 @@ namespace TacSim
                 && variant.Equals("bar100", StringComparison.OrdinalIgnoreCase);
             Pressure = Mount<PressureSensor>("Bar30/Bar100 depth sensor", new Vector3(0, 0.06f, -0.24f), Vector3.zero,
                 sensor => sensor.variant = bar100 ? PressureSensorVariant.Bar100 : PressureSensorVariant.Bar30);
+
+            // Inside the electronics enclosure, axes aligned with the hull.
+            Imu = Mount<InertialSensor>("VN-100 IMU", new Vector3(0, 0, 0.05f), Vector3.zero,
+                imu => imu.model = "VectorNav VN-100 IMU/AHRS");
 
             vehicle.VehicleReset += ResetSensors;
             if (Array.IndexOf(args, "-noSensorNoise") >= 0) SetNoise(false);
