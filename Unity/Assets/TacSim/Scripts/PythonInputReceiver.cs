@@ -16,6 +16,12 @@ namespace TacSim
         private Vector3 moveCmd;
         private Vector3 turnCmd;
         private string pendingAction;
+        private bool hasPacket;
+        private float lastPacketTime = float.NegativeInfinity;
+        private bool ownsControls;
+
+        // Keyboard/gamepad stay active until Python sends something, and come back once it stops.
+        private const float ControlTimeout = 0.5f;
 
         [Serializable]
         private class CommandPacket
@@ -32,7 +38,6 @@ namespace TacSim
 
         private void OnEnable()
         {
-            pilotInput.ExternalControl = true;
             try
             {
                 udpClient = new UdpClient(port);
@@ -58,6 +63,7 @@ namespace TacSim
                     moveCmd = new Vector3(p.moveX, p.moveY, p.moveZ);
                     turnCmd = new Vector3(0, p.turnY, 0);
                     if (!string.IsNullOrEmpty(p.action)) pendingAction = p.action;
+                    hasPacket = true;
                 }
             }
             catch { }
@@ -69,6 +75,21 @@ namespace TacSim
         {
             lock (this)
             {
+                if (hasPacket)
+                {
+                    hasPacket = false;
+                    lastPacketTime = Time.unscaledTime;
+                }
+
+                bool active = Time.unscaledTime - lastPacketTime < ControlTimeout;
+                if (active != ownsControls)
+                {
+                    ownsControls = active;
+                    pilotInput.ExternalControl = active;
+                    if (!active) pilotInput.vehicle?.SetCommand(Vector3.zero, Vector3.zero);
+                }
+                if (!ownsControls) return;
+
                 if (pilotInput.vehicle != null)
                 {
                     pilotInput.vehicle.SetCommand(moveCmd, turnCmd);
@@ -96,7 +117,8 @@ namespace TacSim
 
         private void OnDisable()
         {
-            if (pilotInput != null) pilotInput.ExternalControl = false;
+            if (pilotInput != null && ownsControls) pilotInput.ExternalControl = false;
+            ownsControls = false;
             udpClient?.Close();
         }
     }
