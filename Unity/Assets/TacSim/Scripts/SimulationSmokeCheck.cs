@@ -65,6 +65,13 @@ namespace TacSim
             if (!Check(Mathf.Abs(imu.Acceleration.z + 9.81f) < 0.05f && imu.AngularRate.magnitude < 0.01f
                 && Mathf.Abs(Mathf.DeltaAngle(imu.YawPitchRoll.x, vehicle.Body.rotation.eulerAngles.y)) < 8
                 && Mathf.Abs(imu.MagneticField.z - imu.earthField.z) < 0.05f, "IMU at rest reads gravity on -Z, heading and field")) yield break;
+            ImagingSonar sonar = sensors.Sonar;
+            int bright = 0;
+            foreach (byte value in sonar.Image) if (value > 128) bright++;
+            float floorAhead = (sonar.transform.position.y + 5) / Mathf.Sin(15 * Mathf.Deg2Rad);
+            float centre = sonar.BeamRanges[sonar.beamCount / 2];
+            if (!Check(sonar.Image.Length == sonar.beamCount * sonar.rangeBins && bright > 200
+                && centre > floorAhead * 0.6f && centre < floorAhead * 1.2f, $"sonar images the floor ahead ({centre:0.0} m, {bright} bright bins)")) yield break;
             vehicle.SetCommand(Vector3.zero, new Vector3(1, 0.5f, -1));
             if (!Check(vehicle.RotationCommand == new Vector3(0, 0.5f, 0), "command API rejects pitch and roll without reducing yaw")) yield break;
             vehicle.SetCommand(Vector3.zero, Vector3.zero);

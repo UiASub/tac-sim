@@ -92,6 +92,7 @@ namespace TacSim
             GUI.Label(new Rect(40, height - 75, width - 80, 22), "WASD move   •   SPACE / CTRL depth   •   Q / E yaw   •   SHIFT precision   •   V camera   •   L lights   •   T sensors   •   B beams", small);
             GUI.Label(new Rect(40, height - 51, width - 80, 22), "R reset   •   ESC thrust cut / arm   |   Gamepad: sticks move / turn, triggers depth, A camera, B arm, START reset", small);
             GUI.Label(new Rect(width / 2 - 6, height / 2 - 13, 25, 30), "+", label);
+            SensorOverlay.DrawSonar(SensorSuite.Instance, small, panel, width, height - 125);
             DrawAppearanceMenu(width);
             var visuals = vehicle.GetComponent<RovVisuals>();
             if (visuals != null && GUI.Button(new Rect(22, 180, 260, 32), $"MALSTRØM / {visuals.DetailName} [M]")) visuals.Toggle();

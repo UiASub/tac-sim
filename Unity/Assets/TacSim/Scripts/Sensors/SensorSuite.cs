@@ -26,6 +26,7 @@ namespace TacSim
         public DopplerVelocityLog Dvl { get; private set; }
         public PressureSensor Pressure { get; private set; }
         public InertialSensor Imu { get; private set; }
+        public ImagingSonar Sonar { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -102,6 +103,10 @@ namespace TacSim
             // Inside the electronics enclosure, axes aligned with the hull.
             Imu = Mount<InertialSensor>("VN-100 IMU", new Vector3(0, 0, 0.05f), Vector3.zero,
                 imu => imu.model = "VectorNav VN-100 IMU/AHRS");
+
+            // Front of the frame below the camera, tilted 15° down so the fan sweeps the floor ahead.
+            Sonar = Mount<ImagingSonar>("Sonoptix ECHO sonar", new Vector3(0, -0.08f, 0.27f), new Vector3(15, 0, 0),
+                sonar => sonar.model = "Sonoptix ECHO multibeam imaging sonar");
 
             vehicle.VehicleReset += ResetSensors;
             if (Array.IndexOf(args, "-noSensorNoise") >= 0) SetNoise(false);
