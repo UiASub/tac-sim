@@ -12,6 +12,7 @@ namespace TacSim.Editor
     public static class TacArenaSetup
     {
         public const string ArenaPath = "Assets/TacSim/Scenes/TacArena.unity";
+        const string StructurePrefab = "Assets/TacSim/Prefabs/UnderwaterStructure.prefab";
         const string AutomationMenu = "TAC/Automation server in Play mode (port 8765)";
 
         [MenuItem("TAC/Create TAC arena scene (replaces TacArena)")]
@@ -38,6 +39,8 @@ namespace TacSim.Editor
             var course = new GameObject("TAC course").AddComponent<TacCourse>();
             course.transform.position = new Vector3(0, -5f, 0); // pool floor surface
             course.seed = 1;
+            course.structureModel = AssetDatabase.LoadAssetAtPath<GameObject>(StructurePrefab);
+            if (course.structureModel == null) throw new System.Exception("Missing " + StructurePrefab);
 
             EditorSceneManager.SaveScene(scene);
             var scenes = EditorBuildSettings.scenes.Where(s => s.path != ArenaPath).ToList();

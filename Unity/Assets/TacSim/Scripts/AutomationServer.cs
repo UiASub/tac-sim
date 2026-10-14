@@ -256,10 +256,17 @@ namespace TacSim
                 response.valve_engaged = course.Arm != null && course.Arm.Engaged != null ? course.Arm.Engaged.valveName : "";
                 response.valve_a_tool = Vec3.From(course.ValveA.ToolOffset);
                 response.valve_b_tool = Vec3.From(course.ValveB.ToolOffset);
+                response.valve_a_position = Vec3.From(course.ValveA.transform.position);
+                response.valve_a_facing = Vec3.From(course.ValveA.transform.up);
+                response.valve_b_position = Vec3.From(course.ValveB.transform.position);
+                response.valve_b_facing = Vec3.From(course.ValveB.transform.up);
+                response.valve_a_radius = course.ValveA.Radius;
+                response.valve_b_radius = course.ValveB.Radius;
                 response.dock_position = Vec3.From(course.DockPuck.position);
                 response.dock_yaw = course.DockPuck.eulerAngles.y;
                 response.structure_position = Vec3.From(course.Structure.position);
                 response.structure_yaw = course.Structure.eulerAngles.y;
+                response.structure_size = Vec3.From(course.StructureSize);
                 response.puck_offset = Vec3.From(course.Dock.Offset);
                 response.dock_on_plate = course.Dock.OnPlate;
                 response.dock_puck_contact = course.Dock.PuckContact;
@@ -431,10 +438,18 @@ namespace TacSim
             // Fork tip in each valve's frame: x/z off the axis, y above the bucket floor (seated: 5…70 mm).
             public Vec3 valve_a_tool;
             public Vec3 valve_b_tool;
+            // Bucket floor centre and opening direction of each valve (rim RimHeight × radius / OuterRadius along it).
+            public Vec3 valve_a_position;
+            public Vec3 valve_a_facing;
+            public Vec3 valve_b_position;
+            public Vec3 valve_b_facing;
+            public float valve_a_radius; // bucket outer radius
+            public float valve_b_radius;
             public Vec3 dock_position;
             public float dock_yaw;
             public Vec3 structure_position;
             public float structure_yaw;
+            public Vec3 structure_size; // width (X) × height × depth (Z) in the structure frame
             // Vehicle puck relative to the dock puck in the dock frame; y is the height above the plate.
             public Vec3 puck_offset;
             public bool dock_on_plate;

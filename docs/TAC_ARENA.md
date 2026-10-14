@@ -8,8 +8,10 @@ and a procedural `TacCourse` (`Scripts/Tac/`) built from the TAC Challenge 2026 
   a pinger at one end.
 - **Docking station**: 1200 × 800 mm white plate with a primary power puck in the centre, four steel
   plates and ArUco 28, 7, 19, 96 in the corners.
-- **Subsea structure** (RAL 1004) with 5–10 markers (IDs may repeat, some hard to see) and orange
-  valves A (vertical surface) and B (horizontal surface) starting near S (0°…30°).
+- **Subsea structure**: the team model `Prefabs/UnderwaterStructure.prefab` at its prefab scale, with
+  5–10 markers (IDs may repeat, some hard to see). Its two STEP bucket valves are replaced by turnable
+  valves of booklet size: A on the wall (opening towards the deck) and B on the deck (opening up),
+  starting near S (0°…30°).
 - **Docking referee** (`TacDock.cs`): the vehicle's puck is the centre of the hull underside. Docked =
   resting on the plate for 10 s (+20); precision = pucks within 30 mm for 10 s (+50, and +50 for the
   power-puck light, shown as a green lamp). The tolerances are `ASSUMED`.
@@ -20,7 +22,7 @@ and a procedural `TacCourse` (`Scripts/Tac/`) built from the TAC Challenge 2026 
   fork has opened it (≥ 85°).
 
 The course is generated in Play mode from `seed`; the same seed always gives the same course.
-Values marked `ASSUMED` in `TacCourse.cs` (marker sizes, structure size, dock height, marker
+Values marked `ASSUMED` in `TacCourse.cs` (marker sizes, dock height, marker
 corner order) are not in the booklet text and must be checked against the official drawings.
 
 ## Create and play
@@ -41,10 +43,11 @@ Additional API in this scene:
 - `"ground_truth": true` on any request adds `course_seed`, `pipeline_marker_ids` (ordered from
   the pinger), `structure_marker_ids`, `dock_marker_ids`, `pinger_position`, `dock_offset`
   (vehicle relative to the puck) and `valve_a_angle` / `valve_b_angle`. It also adds the layout
-  (`dock_position`, `dock_yaw`, `structure_position`, `structure_yaw`), the docking referee
+  (`dock_position`, `dock_yaw`, `structure_position`, `structure_yaw`, `structure_size`), the docking referee
   (`puck_offset`, `dock_on_plate`, `dock_puck_contact`, `dock_seconds`, `dock_puck_seconds`,
   `dock_points`) and the valves (`valve_a_open`, `valve_b_open`, `valve_engaged`, `valve_a_tool`,
-  `valve_b_tool`).
+  `valve_b_tool`, and `valve_a_position` / `valve_a_facing` / `valve_b_position` / `valve_b_facing`:
+  bucket floor centre and opening direction).
 - `{"action":"manipulator","wrist":-1,"tilt":1}` sets the arm targets: `wrist` −1…1 (±50°), `tilt`
   0 (forward) … 1 (down). Every response carries `has_manipulator`, `wrist_deg` and `tilt_deg`.
 - `{"action":"lights_off"}` / `{"action":"lights_on"}` switch the headlights.

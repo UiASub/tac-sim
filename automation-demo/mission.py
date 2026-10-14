@@ -51,7 +51,9 @@ from tacsim_client import TacSimClient
 FOV_VERTICAL = math.radians(65)
 SMALL = (800, 450)
 LARGE = (1280, 720)
-TRANSIT_DEPTH = 2.5
+TRANSIT_DEPTH = 1.5  # clear of the structure top (2.44 m deep)
+STRUCTURE_CLEARANCE = 1.0  # vehicle centre above the structure top when passing over it
+LAP_CLEARANCE = 1.2  # vehicle centre outside the structure footprint during the inspection lap
 
 # Vehicle geometry (TacArm.cs, PilotView.cs), metres from the vehicle centre.
 FORWARD_CAMERA_AHEAD = 0.28
@@ -60,10 +62,11 @@ ARM_BELOW = 0.12
 ARM_AHEAD = 0.26
 ARM_REACH = 0.30
 
-# Valve bucket (booklet): outer radius 120 mm, 85 mm deep. The fork tip is seated 40 mm inside the rim.
+# Valve bucket (booklet): outer radius 120 mm, 85 mm deep; the simulator scales it to the structure model.
+# The fork tip is seated 40 mm inside the rim.
 VALVE_RADIUS = 0.12
+VALVE_RIM = 0.0855  # rim above the bucket floor at booklet size (TacValve.RimHeight)
 SEAT_INSIDE_RIM = 0.04
-VALVE_A_HEIGHT = 0.75  # above the floor (TacCourse.cs, ASSUMED)
 
 # Docking station markers: centre (x, z) in the dock frame, +Z = back (TacCourse.cs, ASSUMED order).
 DOCK_MARKER_SIZE = 0.15
@@ -363,6 +366,11 @@ def task_dock(rov: Rov, layout: dict) -> dict:
 
 # ----------------------------------------------------------------------------- structure
 
+def above_structure(layout: dict) -> float:
+    """Depth for passing over the structure."""
+    return -(layout["structure_position"]["y"] + layout["structure_size"]["y"]) - STRUCTURE_CLEARANCE
+
+
 def structure_frame(layout: dict):
     centre, yaw = layout["structure_position"], math.radians(layout["structure_yaw"])
 
@@ -383,15 +391,17 @@ def task_inspect(rov: Rov, layout: dict) -> dict:
         if ids is not None:
             sightings.update(m for m in ids.flatten().tolist() if 1 <= m <= 99)
 
-    lap = [world(2.3 * math.cos(a), 1.9 * math.sin(a)) for a in (math.radians(180 + 45 * i) for i in range(9))]
+    size, above = layout["structure_size"], above_structure(layout)
+    rx, rz = size["x"] / 2 + LAP_CLEARANCE, size["z"] / 2 + LAP_CLEARANCE
+    lap = [world(rx * math.cos(a), rz * math.sin(a)) for a in (math.radians(180 + 45 * i) for i in range(9))]
     goto(rov, *lap[0], TRANSIT_DEPTH, label="to structure")
     change_depth(rov, 4.2, "inspection depth")
     for i, point in enumerate(lap[1:]):
         goto(rov, *point, 4.2, face=world(0, 0), tolerance=0.35, settle=False, camera="forward", size=LARGE,
              on_frame=read, label=f"lap {i + 1}/8  ids {sorted(sightings)}")
-    change_depth(rov, 2.3, "above structure")
-    for x in (-0.7, 0.7):
-        goto(rov, *world(x, 0), 2.3, final_heading=yaw, tolerance=0.25, settle=False, size=LARGE, on_frame=read,
+    change_depth(rov, above, "above structure")
+    for x in (-0.3 * size["x"], 0.3 * size["x"]):
+        goto(rov, *world(x, 0), above, final_heading=yaw, tolerance=0.25, settle=False, size=LARGE, on_frame=read,
              label=f"top pass  ids {sorted(sightings)}")
 
     reported = sorted(m for m, count in sightings.items() if count >= 3)  # ignore one-frame misreads
@@ -400,6 +410,13 @@ def task_inspect(rov: Rov, layout: dict) -> dict:
     print(f"  reported {reported}\n  truth    {sorted(truth)}")
     return dict(points=max(0, 20 * len(correct) - 10 * wrong), notes=f"{len(correct)} correct (+{20 * len(correct)}), {wrong} wrong (-{10 * wrong})",
                 bonus=20 * len(correct), bonus_notes=f"{len(correct)} markers detected autonomously")
+
+
+def valve_rim(layout: dict, name: str) -> tuple[np.ndarray, np.ndarray, float]:
+    """World rim centre, opening direction and outer radius of valve "a" or "b", from the surveyed layout."""
+    p, f, radius = layout[f"valve_{name}_position"], layout[f"valve_{name}_facing"], layout[f"valve_{name}_radius"]
+    facing = np.array((f["x"], f["y"], f["z"]))
+    return np.array((p["x"], p["y"], p["z"])) + VALVE_RIM * radius / VALVE_RADIUS * facing, facing, radius
 
 
 def valve_circle(image: np.ndarray) -> tuple[float, float, float, bool] | None:
@@ -434,13 +451,15 @@ def turn_valve(rov: Rov, target: Target, depth: float, yaw: float, camera: str) 
 
 
 def task_valve_a(rov: Rov, layout: dict) -> bool:
-    """Valve A on the vertical panel: line up with the forward camera, push the fork in, turn."""
-    world, yaw = structure_frame(layout)
+    """Valve A on the vertical wall: line up with the forward camera, push the fork in, turn."""
+    rim, facing, valve_radius = valve_rim(layout, "a")
     f, (w, h) = focal(SMALL), SMALL
-    depth = POOL_FLOOR_DEPTH - VALVE_A_HEIGHT - ARM_BELOW
+    yaw = math.atan2(-facing[0], -facing[2])  # look into the bucket
+    standoff = rim[0] + 1.15 * facing[0], rim[2] + 1.15 * facing[2]
+    depth = -rim[1] - ARM_BELOW  # world y is 0 at the surface
     rov.manipulator(wrist=1, tilt=0)
-    goto(rov, *world(-0.5, -1.75), rov.state["depth"], label="to valve A")
-    goto(rov, *world(-0.5, -1.75), depth, final_heading=yaw, label="valve A standoff")
+    goto(rov, *standoff, rov.state["depth"], label="to valve A")
+    goto(rov, *standoff, depth, final_heading=yaw, label="valve A standoff")
     rov.sim.request(action="lights_off")  # up close the headlights wash the orange out to white
 
     target = Target(rov)
@@ -451,7 +470,7 @@ def task_valve_a(rov: Rov, layout: dict) -> bool:
         circle = valve_circle(image)
         if circle is not None and not circle[3]:
             u, v, radius, _ = circle
-            distance = f * VALVE_RADIUS / radius  # camera to the bucket rim
+            distance = f * valve_radius / radius  # camera to the bucket rim
             right, up = (u - w / 2) / f * distance, (h / 2 - v) / f * distance
             depth = s["depth"] - (up + ARM_BELOW)  # the tool axis runs ARM_BELOW under the camera axis
             if phase == "align":
@@ -489,14 +508,22 @@ def task_valve_a(rov: Rov, layout: dict) -> bool:
 
 
 def task_valve_b(rov: Rov, layout: dict) -> bool:
-    """Valve B on the horizontal shelf: arm straight down, line up with the downward camera, lower, turn."""
-    world, yaw = structure_frame(layout)
+    """Valve B on the deck: arm straight down, line up with the downward camera, lower, turn."""
+    rim, _, valve_radius = valve_rim(layout, "b")
+    centre, s_yaw = layout["structure_position"], math.radians(layout["structure_yaw"])
     f, (w, h) = focal(SMALL), SMALL
+    # Hover with the hull over the open side of the deck, clear of the wall and the front guard: face along
+    # the structure's long axis, towards its middle, with the tool ARM_AHEAD in front of the centre.
+    across = np.array((math.cos(s_yaw), -math.sin(s_yaw)))  # structure +X in world (x, z)
+    outward = across if np.dot(across, (rim[0] - centre["x"], rim[2] - centre["z"])) > 0 else -across
+    yaw = math.atan2(-outward[0], -outward[1])
     ahead = ARM_AHEAD - DOWN_CAMERA_AHEAD            # the tool axis ahead of the downward camera
     seated_height = ARM_BELOW + ARM_REACH - CAMERA_BELOW_CENTRE - SEAT_INSIDE_RIM  # camera above the rim when seated
-    change_depth(rov, 2.4, "above structure")
+    above = above_structure(layout)
+    change_depth(rov, above, "above structure")
     rov.manipulator(wrist=1, tilt=1)
-    goto(rov, *world(0.5, 0.15 - ARM_AHEAD), 2.4, final_heading=yaw, label="over valve B")
+    goto(rov, rim[0] + ARM_AHEAD * outward[0], rim[2] + ARM_AHEAD * outward[1], above, final_heading=yaw,
+         label="over valve B")
 
     target = Target(rov)
     depth_setpoint = final_depth = rov.state["depth"]
@@ -507,7 +534,7 @@ def task_valve_b(rov: Rov, layout: dict) -> bool:
         circle = valve_circle(image)
         if circle is not None and not circle[3]:
             u, v, radius, _ = circle
-            height = f * VALVE_RADIUS / radius  # camera above the bucket rim
+            height = f * valve_radius / radius  # camera above the bucket rim
             target.fix((u - w / 2) / f * height, (h / 2 - v) / f * height - ahead)
             final_depth = s["depth"] + height - seated_height
             cv2.circle(image, (int(u), int(v)), int(radius), (255, 255, 255), 1)
@@ -530,7 +557,7 @@ def task_valve_b(rov: Rov, layout: dict) -> bool:
         rov.show(image, f"valve B  {final_depth - s['depth']:.2f} m to go")
 
     turn_valve(rov, target, final_depth, yaw, "downward")
-    change_depth(rov, 2.4, "leave valve B")
+    change_depth(rov, above, "leave valve B")
     rov.manipulator(wrist=0, tilt=0)
     return rov.truth()["valve_b_open"]
 

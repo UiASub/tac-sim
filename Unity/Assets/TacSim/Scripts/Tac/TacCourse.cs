@@ -32,9 +32,11 @@ namespace TacSim
         public static readonly int[] DockMarkerIds = { 28, 7, 19, 96 };
 
         [Header("Subsea structure (booklet: RAL 1004, 5–10 markers, valves A and B)")]
+        // Prefabs/UnderwaterStructure.prefab: the team's 3D model, used with the prefab's scale (about
+        // 4.0 × 2.6 × 2.1 m; origin at the bottom centre). Its two STEP bucket valves become the TAC valves.
+        public GameObject structureModel;
         public Vector3 structurePosition = new(3.8f, 0, 7.8f);
-        public float structureYaw;
-        public Vector3 structureSize = new(2f, 1.5f, 1.2f); // ASSUMED (W × H × D)
+        public float structureYaw = 180;                    // valve A's wall at the far side, facing the launch end
         public float structureMarkerSize = 0.1f;            // ASSUMED
 
         public int Seed { get; private set; }
@@ -45,6 +47,7 @@ namespace TacSim
         public TacDock Dock { get; private set; }
         public TacArm Arm { get; private set; }
         public Transform Structure { get; private set; }
+        public Vector3 StructureSize { get; private set; } // width (X) × height × depth (Z) in the structure frame
         public TacValve ValveA { get; private set; }
         public TacValve ValveB { get; private set; }
         public float PipelineLength { get; private set; }
@@ -253,69 +256,98 @@ namespace TacSim
 
         void BuildStructure(Random rng)
         {
+            if (structureModel == null)
+                throw new InvalidOperationException("TacCourse.structureModel is not set: run TAC → Create TAC arena scene.");
             var root = new GameObject("Subsea structure").transform;
             root.SetParent(generated, false);
             root.SetLocalPositionAndRotation(structurePosition, Quaternion.Euler(0, structureYaw, 0));
             Structure = root;
-            Material yellow = TacMaterials.Lit("TAC structure", TacMaterials.StructureYellow, 0.1f, 0.35f);
-            float w = structureSize.x / 2, height = structureSize.y, d = structureSize.z / 2;
-            const float beam = 0.08f;
-            const float shelfY = 0.7f;
+            // Keep the prefab's scale; drop its training-pool placement.
+            Transform model = Instantiate(structureModel, root, false).transform;
+            model.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 
-            foreach (float x in new[] { -w, w })
-            foreach (float z in new[] { -d, d })
-                TacMaterials.Primitive(PrimitiveType.Cube, "Post", root, new Vector3(x, height / 2, z),
-                    new Vector3(beam, height, beam), yellow);
-            foreach (float y in new[] { beam / 2, height - beam / 2 })
+            // The model is shown unchanged. Its STEP valves are static meshes, so each gets an invisible TacValve
+            // (handle logic for the arm and the referee) on the same axis.
+            // Valve A on the vertical wall (opening towards the deck), valve B on the deck (opening up).
+            // Both start near S (0°…30°) so that opening them is a real task.
+            ValveA = ReplaceValve(root, model, "STEP valve - wall", "Valve A", Lerp(rng, 0, 30));
+            ValveB = ReplaceValve(root, model, "STEP valve - deck", "Valve B", Lerp(rng, 0, 30));
+
+            StructureSize = LocalBounds(root, model).size;
+
+            // Candidate marker slots in unscaled model coordinates (position, outward normal); some deliberately hard to
+            // see (under the deck, on the floor inside the frame, behind the wall).
+            var slots = new (Vector3, Vector3)[]
             {
-                foreach (float z in new[] { -d, d })
-                    TacMaterials.Primitive(PrimitiveType.Cube, "Beam X", root, new Vector3(0, y, z),
-                        new Vector3(w * 2, beam, beam), yellow);
-                foreach (float x in new[] { -w, w })
-                    TacMaterials.Primitive(PrimitiveType.Cube, "Beam Z", root, new Vector3(x, y, 0),
-                        new Vector3(beam, beam, d * 2), yellow);
-            }
-            TacMaterials.Primitive(PrimitiveType.Cube, "Horizontal shelf (valve B)", root,
-                new Vector3(w / 2, shelfY, 0), new Vector3(w, 0.02f, d * 2), yellow);
-            TacMaterials.Primitive(PrimitiveType.Cube, "Vertical panel (valve A)", root,
-                new Vector3(-w / 2, 0.75f, -d), new Vector3(w, 0.9f, 0.02f), yellow);
-
-            // Valve A on the vertical surface (facing −Z), valve B on the horizontal surface (facing up).
-            // Both start near S (0°…30°) so that opening them is a real task. Valve B sits off-centre so a
-            // vehicle hovering over it with the arm pointing down keeps clear of the top beams.
-            ValveA = TacValve.Create(root, "Valve A", new Vector3(-w / 2, 0.75f, -d - 0.01f),
-                Quaternion.Euler(-90, 0, 0), Lerp(rng, 0, 30));
-            ValveB = TacValve.Create(root, "Valve B", new Vector3(w / 2, shelfY + 0.01f, 0.15f),
-                Quaternion.identity, Lerp(rng, 0, 30));
-
-            // Candidate marker slots; some deliberately hard to see (underside, inside, rear).
-            Quaternion up = Quaternion.identity, front = Quaternion.Euler(-90, 0, 0), back = Quaternion.Euler(90, 0, 0);
-            Quaternion down = Quaternion.Euler(180, 0, 0), right = Quaternion.Euler(0, 0, -90), left = Quaternion.Euler(0, 0, 90);
-            var slots = new (Vector3, Quaternion)[]
-            {
-                (new Vector3(-w * 0.85f, 1.05f, -d - 0.011f), front),
-                (new Vector3(-w * 0.15f, 0.45f, -d - 0.011f), front),
-                (new Vector3(-w / 2, 0.75f, -d + 0.011f), back),
-                (new Vector3(w * 0.8f, shelfY + 0.01f, d * 0.6f), up),
-                (new Vector3(w * 0.25f, shelfY + 0.01f, -d * 0.6f), up),
-                (new Vector3(w / 2, shelfY - 0.01f, 0), down),
-                (new Vector3(0, height, -d), up),
-                (new Vector3(w / 2, height, d), up),
-                (new Vector3(w + beam / 2, 1.0f, -d), right),
-                (new Vector3(-w - beam / 2, 0.5f, d), left),
-                (new Vector3(w / 2, 0.001f, d * 0.3f), up),
-                (new Vector3(w + beam / 2, 0.4f, d), right),
+                (Model(-0.9f, 1.25f, -0.621f), Model(0, 0, 1)),    // wall, deck side
+                (Model(0.25f, 1.1f, -0.621f), Model(0, 0, 1)),     // wall, deck side, beside valve A
+                (Model(0.3f, 1.0f, -0.635f), Model(0, 0, -1)),     // wall, outside
+                (Model(-0.8f, 0.65f, -0.635f), Model(0, 0, -1)),   // wall, outside, low
+                (Model(0.95f, 0.891f, 0.35f), Model(0, 1, 0)),     // deck
+                (Model(-0.15f, 0.891f, 0.4f), Model(0, 1, 0)),     // deck
+                (Model(-0.6f, 0.8f, 0.635f), Model(0, 0, 1)),      // front guard
+                (Model(0.75f, 0.65f, 0.635f), Model(0, 0, 1)),     // front guard
+                (Model(0.6f, 0.87f, 0.35f), Model(0, -1, 0)),      // under the deck
+                (Model(0.5f, 0.001f, 0.2f), Model(0, 1, 0)),       // floor inside the frame
+                (Model(1.151f, 0.35f, 0.57f), Model(1, 0, 0)),     // corner upright, side
+                (Model(-1.151f, 0.55f, -0.57f), Model(-1, 0, 0)),  // corner upright, other side
             };
             int count = rng.Next(5, 11);
             var chosen = Enumerable.Range(0, slots.Length).OrderBy(_ => rng.Next()).Take(count).ToArray();
             StructureMarkerIds = new int[count];
             for (int i = 0; i < count; i++)
             {
-                (Vector3 position, Quaternion rotation) = slots[chosen[i]];
+                (Vector3 position, Vector3 normal) = slots[chosen[i]];
                 StructureMarkerIds[i] = rng.Next(1, 100); // IDs may repeat on the structure.
-                ArucoMarker.Create(root, StructureMarkerIds[i], structureMarkerSize, position,
-                    rotation * Quaternion.Euler(0, Lerp(rng, 0, 360), 0));
+                // Markers keep their real size, so they are placed in the unscaled structure frame.
+                ArucoMarker.Create(root, StructureMarkerIds[i], structureMarkerSize,
+                    root.InverseTransformPoint(model.TransformPoint(position)),
+                    Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.Euler(0, Lerp(rng, 0, 360), 0));
             }
+        }
+
+        // Blender/FBX model coordinates → Unity: the FBX importer mirrors X.
+        static Vector3 Model(float x, float y, float z) => new(-x, y, z);
+
+        static Bounds LocalBounds(Transform frame, Transform model)
+        {
+            var bounds = new Bounds();
+            bool first = true;
+            foreach (MeshFilter filter in model.GetComponentsInChildren<MeshFilter>())
+            {
+                if (filter.sharedMesh == null) continue;
+                Bounds mesh = filter.sharedMesh.bounds;
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    Vector3 local = mesh.center + Vector3.Scale(mesh.extents,
+                        new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1));
+                    Vector3 point = frame.InverseTransformPoint(filter.transform.TransformPoint(local));
+                    if (first) bounds = new Bounds(point, Vector3.zero); else bounds.Encapsulate(point);
+                    first = false;
+                }
+            }
+            return bounds;
+        }
+
+        // Seats an invisible TacValve in the model's valve: same bucket axis, rim and diameter (the booklet valve
+        // scaled to the model).
+        static TacValve ReplaceValve(Transform root, Transform model, string part, string name, float angle)
+        {
+            Transform mesh = model.GetComponentsInChildren<Transform>().First(t => t.name.StartsWith(part));
+            Bounds bounds = mesh.GetComponent<Renderer>().bounds;
+            Vector3 centre = root.InverseTransformPoint(bounds.center);
+            Vector3 size = root.InverseTransformVector(bounds.size);
+            // A deck valve opens upwards; a wall valve opens away from the wall, towards the middle of the frame.
+            bool onDeck = Mathf.Abs(size.y) < Mathf.Abs(size.z);
+            Vector3 facing = onDeck ? Vector3.up : new Vector3(0, 0, -Mathf.Sign(centre.z));
+            float depth = Mathf.Abs(Vector3.Dot(size, facing));
+            Vector3 rim = centre + facing * (depth / 2);
+            float scale = Mathf.Abs(size.x) / (2 * TacValve.OuterRadius);
+            // Handle at 0° (S) points up on a wall valve, as on the booklet drawing.
+            Quaternion rotation = onDeck ? Quaternion.identity : Quaternion.LookRotation(Vector3.up, facing);
+            TacValve valve = TacValve.Create(root, name, rim - facing * (TacValve.RimHeight * scale), rotation, angle, false);
+            valve.transform.localScale = Vector3.one * scale;
+            return valve;
         }
     }
 }
