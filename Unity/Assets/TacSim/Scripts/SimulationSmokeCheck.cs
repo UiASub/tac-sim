@@ -52,11 +52,14 @@ namespace TacSim
             vehicle.ResetVehicle();
             Vector3 start = vehicle.Body.position;
             yield return new WaitForSeconds(1);
-            if (!Check(Vector3.Distance(vehicle.Body.position, start) < 0.1f, "neutral buoyancy")) yield break;
+            // The pool current is horizontal; buoyancy is judged on vertical drift alone.
+            if (!Check(Mathf.Abs(vehicle.Body.position.y - start.y) < 0.1f, "neutral buoyancy")) yield break;
             DopplerVelocityLog dvl = sensors.Dvl;
             float expectedAltitude = dvl.transform.position.y + 5;
+            Vector3 drift = SensorFrames.ToFrd(Quaternion.Inverse(vehicle.Body.rotation) * vehicle.Body.linearVelocity);
             if (!Check(dvl.VelocityValid && Mathf.Abs(dvl.Altitude - expectedAltitude) < 0.1f
-                && dvl.Velocity.magnitude < 0.05f && dvl.PingRate > 10, "DVL locks on the pool floor at rest")) yield break;
+                && Vector3.Distance(dvl.Velocity, drift) < 0.05f && dvl.PingRate > 10,
+                "DVL locks on the pool floor and measures the current drift")) yield break;
             PressureSensor pressure = sensors.Pressure;
             float sensorDepth = vehicle.waterSurface - pressure.transform.position.y;
             if (!Check(Mathf.Abs(pressure.Depth - sensorDepth) < 0.05f && pressure.Pressure > 1200

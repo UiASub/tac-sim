@@ -24,7 +24,7 @@ namespace TacSim
         public Vector3 current;
         [Header("Gentle pool current (world-space m/s)")]
         public bool simulateWaterCurrent = true;
-        [Range(0, 0.5f)] public float currentSpeed = 5f;
+        [Range(0, 0.5f)] public float currentSpeed = 0.16f;
         public Vector2 currentPoolSize = new(16, 24);
         public float currentPoolFloor = -5;
         public Vector3 linearDrag = new(12, 18, 10);
