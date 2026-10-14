@@ -177,7 +177,12 @@ namespace TacSim
         public static void SetLayer(GameObject root, int layer)
         {
             root.layer = layer;
-            foreach (Transform child in root.transform) SetLayer(child.gameObject, layer);
+            foreach (Transform child in root.transform)
+            {
+                // The manipulator stays visible: pilots and policies work it through the cameras.
+                if (child.GetComponent<TacArm>() != null) continue;
+                SetLayer(child.gameObject, layer);
+            }
         }
 
         void OnDestroy()

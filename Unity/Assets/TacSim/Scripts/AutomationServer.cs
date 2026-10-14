@@ -26,11 +26,27 @@ namespace TacSim
         float lastCommandTime;
         bool ownedControls;
         int port;
+        TacCourse course;
+
+        public bool HasClient => clientConnected;
+#if UNITY_EDITOR
+        public const string EditorPrefKey = "TacSim.AutomationInPlayMode";
+#endif
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
         {
-            if (!TryGetPort(Environment.GetCommandLineArgs(), out int requestedPort)) return;
+            if (!TryGetPort(Environment.GetCommandLineArgs(), out int requestedPort)
+                && !TryGetPortFromEnvironment(out requestedPort))
+            {
+#if UNITY_EDITOR
+                // Editor Play mode has no command line; toggle with TAC → Automation server in Play mode.
+                if (!UnityEditor.EditorPrefs.GetBool(EditorPrefKey, false)) return;
+                requestedPort = DefaultPort;
+#else
+                return;
+#endif
+            }
             PilotInput pilot = FindFirstObjectByType<PilotInput>();
             if (pilot == null)
             {
@@ -58,9 +74,19 @@ namespace TacSim
             return false;
         }
 
+        static bool TryGetPortFromEnvironment(out int port)
+        {
+            port = DefaultPort;
+            string value = Environment.GetEnvironmentVariable("TAC_AUTOMATION_PORT");
+            if (!int.TryParse(value, out int parsed) || parsed is <= 0 or > 65535) return false;
+            port = parsed;
+            return true;
+        }
+
         void Start()
         {
             input = GetComponent<PilotInput>();
+            course = FindFirstObjectByType<TacCourse>();
             vehicle = input.vehicle;
             view = input.view;
             pilotCamera = view.pilotCamera;
@@ -147,6 +173,24 @@ namespace TacSim
                 case "arm":
                     vehicle.SetArmed(true);
                     lastCommandTime = Time.unscaledTime;
+                    break;
+                case "scenario":
+                    // New course: seed > 0 is reproducible, seed <= 0 picks a random one. Also resets the vehicle.
+                    if (course == null) return "this scene has no TAC course";
+                    if (request.seed > 0) course.Build(request.seed);
+                    else course.BuildRandom();
+                    vehicle.ResetVehicle();
+                    if (course.Arm != null) course.Arm.SetTargets(0, 0);
+                    lastCommandTime = Time.unscaledTime;
+                    break;
+                case "lights_on":
+                case "lights_off":
+                    foreach (Light light in input.headlights) light.enabled = action == "lights_on";
+                    break;
+                case "manipulator":
+                    // Targets persist until changed. wrist −1…1 (Topside manip axis), tilt 0 forward … 1 down.
+                    if (course == null || course.Arm == null) return "this scene has no manipulator";
+                    course.Arm.SetTargets(request.wrist, request.tilt);
                     break;
                 case "disarm":
                 case "stop":
@@ -241,6 +285,45 @@ namespace TacSim
                     }
                 }
             }
+            if (course != null && course.Arm != null)
+            {
+                response.has_manipulator = true;
+                response.wrist_deg = course.Arm.Wrist;
+                response.tilt_deg = course.Arm.Tilt;
+            }
+            if (course != null && (request.ground_truth || string.Equals(request.action, "scenario", StringComparison.OrdinalIgnoreCase)))
+            {
+                response.course_seed = course.Seed;
+                response.pipeline_marker_ids = course.PipelineMarkerIds;
+                response.structure_marker_ids = course.StructureMarkerIds;
+                response.dock_marker_ids = TacCourse.DockMarkerIds;
+                response.pinger_position = Vec3.From(course.PingerPosition);
+                response.dock_offset = Vec3.From(course.DockOffset(body.position));
+                response.valve_a_angle = course.ValveA.angle;
+                response.valve_b_angle = course.ValveB.angle;
+                response.valve_a_open = course.ValveA.Completed;
+                response.valve_b_open = course.ValveB.Completed;
+                response.valve_engaged = course.Arm != null && course.Arm.Engaged != null ? course.Arm.Engaged.valveName : "";
+                response.valve_a_tool = Vec3.From(course.ValveA.ToolOffset);
+                response.valve_b_tool = Vec3.From(course.ValveB.ToolOffset);
+                response.valve_a_position = Vec3.From(course.ValveA.transform.position);
+                response.valve_a_facing = Vec3.From(course.ValveA.transform.up);
+                response.valve_b_position = Vec3.From(course.ValveB.transform.position);
+                response.valve_b_facing = Vec3.From(course.ValveB.transform.up);
+                response.valve_a_radius = course.ValveA.Radius;
+                response.valve_b_radius = course.ValveB.Radius;
+                response.dock_position = Vec3.From(course.DockPuck.position);
+                response.dock_yaw = course.DockPuck.eulerAngles.y;
+                response.structure_position = Vec3.From(course.Structure.position);
+                response.structure_yaw = course.Structure.eulerAngles.y;
+                response.structure_size = Vec3.From(course.StructureSize);
+                response.puck_offset = Vec3.From(course.Dock.Offset);
+                response.dock_on_plate = course.Dock.OnPlate;
+                response.dock_puck_contact = course.Dock.PuckContact;
+                response.dock_seconds = course.Dock.BestDockedSeconds;
+                response.dock_puck_seconds = course.Dock.BestPuckSeconds;
+                response.dock_points = course.Dock.Points;
+            }
             if (request.capture)
             {
                 response.image_width = Mathf.Clamp(request.image_width > 0 ? request.image_width : 320, 64, 1280);
@@ -248,9 +331,21 @@ namespace TacSim
                 int quality = Mathf.Clamp(request.jpeg_quality > 0 ? request.jpeg_quality : 75, 20, 95);
                 FisheyeCameraSensor sensorCamera = view.ActiveSensorCamera;
                 response.image_time = Time.timeAsDouble;
-                response.image_jpeg_base64 = sensorCamera != null
-                    ? sensorCamera.CaptureJpeg(response.image_width, response.image_height, quality, out response.image_time)
-                    : CaptureJpeg(response.image_width, response.image_height, quality);
+                if (sensorCamera != null)
+                {
+                    // Sensor cameras always deliver bottom-up rows, on every graphics API.
+                    response.image_jpeg_base64 = sensorCamera.CaptureJpeg(response.image_width, response.image_height,
+                        quality, out response.image_time);
+                    response.image_bottom_up = true;
+                }
+                else
+                {
+                    response.image_jpeg_base64 = CaptureJpeg(response.image_width, response.image_height, quality);
+                    // Verified on Direct3D 12: the JPEG is already upright there. Other graphics APIs keep the
+                    // original behaviour (the client flips the image).
+                    response.image_bottom_up = SystemInfo.graphicsDeviceType is not
+                        (UnityEngine.Rendering.GraphicsDeviceType.Direct3D11 or UnityEngine.Rendering.GraphicsDeviceType.Direct3D12);
+                }
             }
             return response;
         }
@@ -363,7 +458,11 @@ namespace TacSim
             public float sonar_range;
             public string sonar_band;
             public string sensor_noise;
+            // "reset": non-zero redraws sensor errors. "scenario": > 0 builds that course, <= 0 a random one.
             public int seed;
+            public bool ground_truth;
+            public float wrist;
+            public float tilt;
         }
 
         [Serializable]
@@ -385,6 +484,9 @@ namespace TacSim
             public float collision_force;
             public float peak_collision_force;
             public string camera;
+            public bool has_manipulator;
+            public float wrist_deg;
+            public float tilt_deg;
             public int image_width;
             public int image_height;
             public double image_time;
@@ -392,6 +494,41 @@ namespace TacSim
             public SensorReadings sensors;
             public CameraImage[] images;
             public SensorInfo[] sensor_info;
+            public bool image_bottom_up;
+            // Ground truth (only with "ground_truth": true or action "scenario"); pipeline IDs start at the pinger.
+            public int course_seed;
+            public int[] pipeline_marker_ids;
+            public int[] structure_marker_ids;
+            public int[] dock_marker_ids;
+            public Vec3 pinger_position;
+            public Vec3 dock_offset;
+            public float valve_a_angle;
+            public float valve_b_angle;
+            public bool valve_a_open;
+            public bool valve_b_open;
+            public string valve_engaged;
+            // Fork tip in each valve's frame: x/z off the axis, y above the bucket floor (seated: 5…70 mm).
+            public Vec3 valve_a_tool;
+            public Vec3 valve_b_tool;
+            // Bucket floor centre and opening direction of each valve (rim RimHeight × radius / OuterRadius along it).
+            public Vec3 valve_a_position;
+            public Vec3 valve_a_facing;
+            public Vec3 valve_b_position;
+            public Vec3 valve_b_facing;
+            public float valve_a_radius; // bucket outer radius
+            public float valve_b_radius;
+            public Vec3 dock_position;
+            public float dock_yaw;
+            public Vec3 structure_position;
+            public float structure_yaw;
+            public Vec3 structure_size; // width (X) × height × depth (Z) in the structure frame
+            // Vehicle puck relative to the dock puck in the dock frame; y is the height above the plate.
+            public Vec3 puck_offset;
+            public bool dock_on_plate;
+            public bool dock_puck_contact;
+            public float dock_seconds;
+            public float dock_puck_seconds;
+            public int dock_points;
         }
 
         [Serializable]

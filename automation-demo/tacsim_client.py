@@ -81,8 +81,8 @@ class TacSimClient:
         image = cv2.imdecode(pixels, cv2.IMREAD_COLOR)
         if image is None:
             raise ValueError("simulator returned an invalid JPEG")
-        # RenderTexture pixels have a bottom-left origin; OpenCV uses top-left.
-        return cv2.flip(image, 0)
+        # Some graphics APIs deliver the rows bottom-up (the simulator says which); OpenCV wants top-down.
+        return cv2.flip(image, 0) if response.get("image_bottom_up", True) else image
 
     @staticmethod
     def decode_camera(image: dict[str, Any]) -> NDArray[np.uint8]:
