@@ -16,6 +16,8 @@ namespace TacSim
         {
             string[] args = Environment.GetCommandLineArgs();
             if (Array.IndexOf(args, "-smokeTest") < 0) yield break;
+            SensorSuite sensors = SensorSuite.Instance;
+            if (!Check(sensors != null && sensors.ForwardCamera != null, "sensor suite installed")) yield break;
             input.ExternalControl = false;
             vehicle.ResetVehicle();
             input.SendMessage("OnApplicationFocus", false);
@@ -50,7 +52,29 @@ namespace TacSim
             vehicle.ResetVehicle();
             Vector3 start = vehicle.Body.position;
             yield return new WaitForSeconds(1);
-            if (!Check(Vector3.Distance(vehicle.Body.position, start) < 0.1f, "neutral buoyancy")) yield break;
+            // The pool current is horizontal; buoyancy is judged on vertical drift alone.
+            if (!Check(Mathf.Abs(vehicle.Body.position.y - start.y) < 0.1f, "neutral buoyancy")) yield break;
+            DopplerVelocityLog dvl = sensors.Dvl;
+            float expectedAltitude = dvl.transform.position.y + 5;
+            Vector3 drift = SensorFrames.ToFrd(Quaternion.Inverse(vehicle.Body.rotation) * vehicle.Body.linearVelocity);
+            if (!Check(dvl.VelocityValid && Mathf.Abs(dvl.Altitude - expectedAltitude) < 0.1f
+                && Vector3.Distance(dvl.Velocity, drift) < 0.05f && dvl.PingRate > 10,
+                "DVL locks on the pool floor and measures the current drift")) yield break;
+            PressureSensor pressure = sensors.Pressure;
+            float sensorDepth = vehicle.waterSurface - pressure.transform.position.y;
+            if (!Check(Mathf.Abs(pressure.Depth - sensorDepth) < 0.05f && pressure.Pressure > 1200
+                && Mathf.Abs(pressure.Temperature - pressure.waterTemperature) < 3, "pressure sensor reports depth and temperature")) yield break;
+            InertialSensor imu = sensors.Imu;
+            if (!Check(Mathf.Abs(imu.Acceleration.z + 9.81f) < 0.05f && imu.AngularRate.magnitude < 0.01f
+                && Mathf.Abs(Mathf.DeltaAngle(imu.YawPitchRoll.x, vehicle.Body.rotation.eulerAngles.y)) < 8
+                && Mathf.Abs(imu.MagneticField.z - imu.earthField.z) < 0.05f, "IMU at rest reads gravity on -Z, heading and field")) yield break;
+            ImagingSonar sonar = sensors.Sonar;
+            int bright = 0;
+            foreach (byte value in sonar.Image) if (value > 128) bright++;
+            float floorAhead = (sonar.transform.position.y + 5) / Mathf.Sin(15 * Mathf.Deg2Rad);
+            float centre = sonar.BeamRanges[sonar.beamCount / 2];
+            if (!Check(sonar.Image.Length == sonar.beamCount * sonar.rangeBins && bright > 200
+                && centre > floorAhead * 0.6f && centre < floorAhead * 1.2f, $"sonar images the floor ahead ({centre:0.0} m, {bright} bright bins)")) yield break;
             vehicle.SetCommand(Vector3.zero, new Vector3(1, 0.5f, -1));
             if (!Check(vehicle.RotationCommand == new Vector3(0, 0.5f, 0), "command API rejects pitch and roll without reducing yaw")) yield break;
             vehicle.SetCommand(Vector3.zero, Vector3.zero);
@@ -68,6 +92,9 @@ namespace TacSim
             vehicle.SetCommand(Vector3.forward, Vector3.zero);
             yield return new WaitForSeconds(2);
             if (!Check(vehicle.Body.position.z > start.z + 0.5f, "forward propulsion")) yield break;
+            Vector3 truth = SensorFrames.ToFrd(Quaternion.Inverse(vehicle.Body.rotation) * vehicle.Body.linearVelocity);
+            if (!Check(dvl.VelocityValid && dvl.Velocity.x > 0.2f && Vector3.Distance(dvl.Velocity, truth) < 0.05f
+                && dvl.DeadReckoning.x > 0.3f, "DVL measures forward velocity and dead-reckons north")) yield break;
             vehicle.ResetVehicle();
             vehicle.SetCommand(Vector3.up, Vector3.zero);
             yield return new WaitForSeconds(1);
@@ -76,6 +103,9 @@ namespace TacSim
             vehicle.SetCommand(Vector3.zero, Vector3.up);
             yield return new WaitForSeconds(1);
             if (!Check(Quaternion.Angle(vehicle.Body.rotation, Quaternion.identity) > 5, "yaw torque")) yield break;
+            if (!Check(Mathf.Abs(imu.AngularRate.z - vehicle.Body.angularVelocity.y) < 0.05f && imu.AngularRate.z > 0.05f
+                && Mathf.Abs(Mathf.DeltaAngle(imu.YawPitchRoll.x, vehicle.Body.rotation.eulerAngles.y)) < 15,
+                "IMU yaw rate is positive clockwise (FRD +Z) and heading tracks the hull")) yield break;
             if (!Check(Vector3.Angle(vehicle.Body.rotation * Vector3.up, Vector3.up) < 0.01f,
                 "hull stays level while yawing")) yield break;
             vehicle.SetArmed(false);
@@ -90,6 +120,16 @@ namespace TacSim
             view.CycleCamera();
             yield return null;
             if (!Check(view.Mode == 1, "camera switch")) yield break;
+            yield return new WaitForSeconds(0.5f);
+            if (!Check(view.ActiveSensorCamera == sensors.ForwardCamera && sensors.ForwardCamera.Output != null
+                && MeanBrightness(sensors.ForwardCamera.Output) > 0.02f, "exploreHD renders through its fisheye model")) yield break;
+            view.CycleCamera();
+            yield return new WaitForSeconds(0.5f);
+            if (!Check(view.ActiveSensorCamera == sensors.DownwardCamera && sensors.DownwardCamera.Output != null
+                && MeanBrightness(sensors.DownwardCamera.Output) > 0.02f, "IMX307 fisheye renders downward")) yield break;
+            if (!Check(Mathf.Abs(sensors.DownwardCamera.FieldOfView.x - 180) < 0.5f
+                && Mathf.Abs(sensors.DownwardCamera.FieldOfView.y - 120) < 2, "IMX307 180° circle crops to the sensor")) yield break;
+            view.SetMode(1);
             view.CycleCamera();
             view.CycleCamera();
             if (view.appearance != null)
@@ -170,6 +210,25 @@ namespace TacSim
                 for (int frame = 0; frame < 120; frame++) { yield return null; elapsed += Time.unscaledDeltaTime; }
                 Debug.Log($"TAC_RENDER_SAMPLE: {120 / elapsed:F1} fps over 120 frames at {Screen.width}x{Screen.height}");
             }
+            int sensorCaptures = Array.IndexOf(args, "-captureSensors");
+            if (sensorCaptures >= 0 && sensorCaptures + 1 < args.Length)
+            {
+                string folder = args[sensorCaptures + 1];
+                Directory.CreateDirectory(folder);
+                vehicle.ResetVehicle();
+                vehicle.SetArmed(false);
+                sensors.TelemetryVisible = true;
+                for (int mode = 0; mode < 3; mode++)
+                {
+                    view.SetMode(mode);
+                    yield return new WaitForSeconds(1);
+                    yield return new WaitForEndOfFrame();
+                    ScreenCapture.CaptureScreenshot(Path.Combine(folder, $"sensor-view-{mode}.png"));
+                    yield return new WaitForSeconds(0.5f);
+                }
+                view.SetMode(0);
+                vehicle.ResetVehicle();
+            }
             int capture = Array.IndexOf(args, "-captureScreenshot");
             if (capture >= 0 && capture + 1 < args.Length)
             {
@@ -179,6 +238,28 @@ namespace TacSim
             }
             Debug.Log("TAC_SMOKE_PASSED");
             Application.Quit(0);
+        }
+
+        static float MeanBrightness(RenderTexture source)
+        {
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture small = RenderTexture.GetTemporary(16, 16, 0, RenderTextureFormat.ARGB32);
+            var pixels = new Texture2D(16, 16, TextureFormat.RGB24, false);
+            try
+            {
+                Graphics.Blit(source, small);
+                RenderTexture.active = small;
+                pixels.ReadPixels(new Rect(0, 0, 16, 16), 0, 0);
+                float sum = 0;
+                foreach (Color color in pixels.GetPixels()) sum += color.grayscale;
+                return sum / 256;
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(small);
+                Destroy(pixels);
+            }
         }
 
         static bool Check(bool passed, string condition)

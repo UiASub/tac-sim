@@ -43,7 +43,10 @@ class TacSimClient:
         capture: bool = True,
         image_width: int = 480,
         image_height: int = 270,
+        **sensors: Any,
     ) -> dict[str, Any]:
+        """Drive the vehicle. Extra keywords pass through, e.g. ``sonar_image=True`` or
+        ``camera_images=["explorehd", "fisheye"]``; ``response["sensors"]`` holds the readings."""
         return self.request(
             action="command",
             surge=surge,
@@ -54,7 +57,20 @@ class TacSimClient:
             capture=capture,
             image_width=image_width,
             image_height=image_height,
+            **sensors,
         )
+
+    def observe(self, **sensors: Any) -> dict[str, Any]:
+        return self.request(action="observe", **sensors)
+
+    def reset(self, *, seed: int = 0, **settings: Any) -> dict[str, Any]:
+        """Reset the vehicle; a non-zero seed redraws every sensor's unit errors."""
+        return self.request(action="reset", seed=seed, **settings)
+
+    def describe(self) -> list[dict[str, Any]]:
+        """Sensor models, mount poses (FRD) and camera intrinsics."""
+        info: list[dict[str, Any]] = self.request(action="describe")["sensor_info"]
+        return info
 
     @staticmethod
     def decode_image(response: dict[str, Any]) -> NDArray[np.uint8]:
@@ -67,6 +83,38 @@ class TacSimClient:
             raise ValueError("simulator returned an invalid JPEG")
         # Some graphics APIs deliver the rows bottom-up (the simulator says which); OpenCV wants top-down.
         return cv2.flip(image, 0) if response.get("image_bottom_up", True) else image
+
+    @staticmethod
+    def decode_camera(image: dict[str, Any]) -> NDArray[np.uint8]:
+        """Decode one entry of ``response["images"]`` to a top-left-origin BGR image."""
+        return TacSimClient.decode_image({"image_jpeg_base64": image["jpeg_base64"]})
+
+    @staticmethod
+    def decode_sonar(response: dict[str, Any]) -> NDArray[np.uint8]:
+        """Sonar intensity as (range bins, beams); row 0 is nearest, column 0 is port."""
+        sonar = response["sensors"]["sonar"]
+        encoded = sonar.get("image_base64")
+        if not encoded:
+            raise ValueError("request the sonar image with sonar_image=True")
+        raw = np.frombuffer(base64.b64decode(encoded), dtype=np.uint8)
+        return raw.reshape(sonar["bins"], sonar["beams"])
+
+    @staticmethod
+    def sonar_fan(polar: NDArray[np.uint8], aperture_deg: float, height: int = 300) -> NDArray[np.uint8]:
+        """Project a (bins, beams) sonar image to a coloured fan, apex at the bottom."""
+        bins, beams = polar.shape
+        half = np.radians(aperture_deg / 2)
+        width = int(np.ceil(2 * height * np.sin(half)))
+        rows, columns = np.mgrid[0:height, 0:width]
+        dx = columns + 0.5 - width / 2
+        dy = height - (rows + 0.5)
+        radius = np.hypot(dx, dy) / height
+        angle = np.arctan2(dx, dy)
+        inside = (radius <= 1) & (np.abs(angle) <= half)
+        beam = np.clip(((angle / (2 * half) + 0.5) * beams).astype(int), 0, beams - 1)
+        bin_ = np.clip((radius * bins).astype(int), 0, bins - 1)
+        fan = np.where(inside, polar[bin_, beam], 0).astype(np.uint8)
+        return cv2.applyColorMap(fan, cv2.COLORMAP_HOT)
 
     def close(self) -> None:
         try:

@@ -33,6 +33,8 @@ namespace TacSim
                 if (k.vKey.wasPressedThisFrame) view.CycleCamera();
                 if (k.lKey.wasPressedThisFrame) ToggleLights();
                 if (k.mKey.wasPressedThisFrame) vehicle.GetComponent<RovVisuals>()?.Toggle();
+                if (k.tKey.wasPressedThisFrame) ToggleTelemetry();
+                if (k.bKey.wasPressedThisFrame) ToggleBeams();
                 if (k.nKey.wasPressedThisFrame && course != null) course.BuildRandom();
                 if (course != null && course.Arm != null)
                 {
@@ -60,6 +62,8 @@ namespace TacSim
                 if (g.buttonEast.wasPressedThisFrame) vehicle.SetArmed(!vehicle.Armed);
                 if (g.buttonNorth.wasPressedThisFrame) ToggleLights();
                 if (g.selectButton.wasPressedThisFrame) vehicle.GetComponent<RovVisuals>()?.Toggle();
+                if (g.dpad.up.wasPressedThisFrame) ToggleTelemetry();
+                if (g.dpad.down.wasPressedThisFrame) ToggleBeams();
                 if (g.rightShoulder.wasPressedThisFrame && view.appearance != null) view.appearance.CyclePreset();
             }
             if (precision)
@@ -71,6 +75,16 @@ namespace TacSim
         }
 
         static float Axis(bool positive, bool negative) => (positive ? 1 : 0) - (negative ? 1 : 0);
+        static void ToggleTelemetry()
+        {
+            SensorSuite sensors = SensorSuite.Instance;
+            if (sensors != null) sensors.TelemetryVisible = !sensors.TelemetryVisible;
+        }
+        static void ToggleBeams()
+        {
+            SensorSuite sensors = SensorSuite.Instance;
+            if (sensors != null) sensors.BeamsVisible = !sensors.BeamsVisible;
+        }
         public void ToggleLights() { foreach (Light light in headlights) light.enabled = !light.enabled; }
         void OnApplicationFocus(bool focused)
         {

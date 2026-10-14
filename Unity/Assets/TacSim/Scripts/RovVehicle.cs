@@ -24,7 +24,7 @@ namespace TacSim
         public Vector3 current;
         [Header("Gentle pool current (world-space m/s)")]
         public bool simulateWaterCurrent = true;
-        [Range(0, 0.5f)] public float currentSpeed = 5f;
+        [Range(0, 0.5f)] public float currentSpeed = 0.16f;
         public Vector2 currentPoolSize = new(16, 24);
         public float currentPoolFloor = -5;
         public Vector3 linearDrag = new(12, 18, 10);
@@ -44,6 +44,7 @@ namespace TacSim
         public bool IsColliding => contacts.Count > 0;
         public float CollisionForce { get; private set; }
         public float PeakCollisionForce { get; private set; }
+        public event Action VehicleReset;
         Vector3 spawnPosition;
         Quaternion spawnRotation;
         float[] forces;
@@ -94,6 +95,7 @@ namespace TacSim
             CollisionForce = 0;
             PeakCollisionForce = 0;
             Armed = true;
+            VehicleReset?.Invoke();
         }
 
         void OnCollisionEnter(Collision collision) => RecordCollision(collision);
