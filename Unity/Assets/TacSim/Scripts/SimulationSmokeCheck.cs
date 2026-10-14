@@ -16,6 +16,8 @@ namespace TacSim
         {
             string[] args = Environment.GetCommandLineArgs();
             if (Array.IndexOf(args, "-smokeTest") < 0) yield break;
+            SensorSuite sensors = SensorSuite.Instance;
+            if (!Check(sensors != null && sensors.ForwardCamera != null, "sensor suite installed")) yield break;
             input.ExternalControl = false;
             vehicle.ResetVehicle();
             input.SendMessage("OnApplicationFocus", false);
@@ -51,6 +53,10 @@ namespace TacSim
             Vector3 start = vehicle.Body.position;
             yield return new WaitForSeconds(1);
             if (!Check(Vector3.Distance(vehicle.Body.position, start) < 0.1f, "neutral buoyancy")) yield break;
+            DopplerVelocityLog dvl = sensors.Dvl;
+            float expectedAltitude = dvl.transform.position.y + 5;
+            if (!Check(dvl.VelocityValid && Mathf.Abs(dvl.Altitude - expectedAltitude) < 0.1f
+                && dvl.Velocity.magnitude < 0.05f && dvl.PingRate > 10, "DVL locks on the pool floor at rest")) yield break;
             vehicle.SetCommand(Vector3.zero, new Vector3(1, 0.5f, -1));
             if (!Check(vehicle.RotationCommand == new Vector3(0, 0.5f, 0), "command API rejects pitch and roll without reducing yaw")) yield break;
             vehicle.SetCommand(Vector3.zero, Vector3.zero);
@@ -68,6 +74,9 @@ namespace TacSim
             vehicle.SetCommand(Vector3.forward, Vector3.zero);
             yield return new WaitForSeconds(2);
             if (!Check(vehicle.Body.position.z > start.z + 0.5f, "forward propulsion")) yield break;
+            Vector3 truth = SensorFrames.ToFrd(Quaternion.Inverse(vehicle.Body.rotation) * vehicle.Body.linearVelocity);
+            if (!Check(dvl.VelocityValid && dvl.Velocity.x > 0.2f && Vector3.Distance(dvl.Velocity, truth) < 0.05f
+                && dvl.DeadReckoning.x > 0.3f, "DVL measures forward velocity and dead-reckons north")) yield break;
             vehicle.ResetVehicle();
             vehicle.SetCommand(Vector3.up, Vector3.zero);
             yield return new WaitForSeconds(1);
@@ -90,8 +99,6 @@ namespace TacSim
             view.CycleCamera();
             yield return null;
             if (!Check(view.Mode == 1, "camera switch")) yield break;
-            SensorSuite sensors = SensorSuite.Instance;
-            if (!Check(sensors != null && sensors.ForwardCamera != null, "sensor suite installed")) yield break;
             yield return new WaitForSeconds(0.5f);
             if (!Check(view.ActiveSensorCamera == sensors.ForwardCamera && sensors.ForwardCamera.Output != null
                 && MeanBrightness(sensors.ForwardCamera.Output) > 0.02f, "exploreHD renders through its fisheye model")) yield break;

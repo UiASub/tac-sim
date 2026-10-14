@@ -15,6 +15,7 @@ namespace TacSim
 
         public RovVehicle vehicle;
         public bool TelemetryVisible { get; set; } = true;
+        public bool BeamsVisible { get; set; } = true;
         public int Seed { get; private set; }
         public bool NoiseEnabled { get; private set; } = true;
         readonly List<RovSensor> sensors = new();
@@ -22,6 +23,7 @@ namespace TacSim
 
         public FisheyeCameraSensor ForwardCamera { get; private set; }
         public FisheyeCameraSensor DownwardCamera { get; private set; }
+        public DopplerVelocityLog Dvl { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -84,6 +86,10 @@ namespace TacSim
                     camera.sensorNoise = 0.02f;
                     camera.vignetting = 0.45f;
                 });
+
+            // Transducer face below the skids, aligned with the hull (LED/X axis forward).
+            Dvl = Mount<DopplerVelocityLog>("DVL A50", new Vector3(0, -0.18f, -0.05f), Vector3.zero,
+                dvl => dvl.model = "Water Linked DVL A50");
 
             vehicle.VehicleReset += ResetSensors;
             if (Array.IndexOf(args, "-noSensorNoise") >= 0) SetNoise(false);
