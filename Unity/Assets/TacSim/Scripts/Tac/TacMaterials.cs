@@ -34,7 +34,13 @@ namespace TacSim
             item.transform.localPosition = position;
             item.transform.localScale = scale;
             item.GetComponent<Renderer>().sharedMaterial = material;
-            if (!collision) Object.Destroy(item.GetComponent<Collider>());
+            if (!collision)
+            {
+                // Destroy is deferred to the end of the frame; disable first so physics never sees it.
+                Collider collider = item.GetComponent<Collider>();
+                collider.enabled = false;
+                Object.Destroy(collider);
+            }
             return item;
         }
 

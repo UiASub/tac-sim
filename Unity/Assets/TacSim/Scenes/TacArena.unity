@@ -21558,9 +21558,9 @@ MonoBehaviour:
   dockYaw: 0
   dockPlateHeight: 0.3
   dockMarkerSize: 0.15
+  structureModel: {fileID: 5493622020237033313, guid: 726ccb8893a067d4793d95ea15fa7fd5, type: 3}
   structurePosition: {x: 3.8, y: 0, z: 7.8}
-  structureYaw: 0
-  structureSize: {x: 2, y: 1.5, z: 1.2}
+  structureYaw: 180
   structureMarkerSize: 0.1
 --- !u!4 &2091258612
 Transform:

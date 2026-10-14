@@ -34,6 +34,12 @@ namespace TacSim
                 if (k.lKey.wasPressedThisFrame) ToggleLights();
                 if (k.mKey.wasPressedThisFrame) vehicle.GetComponent<RovVisuals>()?.Toggle();
                 if (k.nKey.wasPressedThisFrame && course != null) course.BuildRandom();
+                if (course != null && course.Arm != null)
+                {
+                    float wrist = Axis(k.xKey.isPressed, k.zKey.isPressed);
+                    if (wrist != 0) course.Arm.NudgeWrist(wrist, Time.deltaTime);
+                    if (k.cKey.wasPressedThisFrame) course.Arm.ToggleTilt();
+                }
                 if (view.appearance != null)
                 {
                     if (k.hKey.wasPressedThisFrame) view.appearance.MenuOpen = !view.appearance.MenuOpen;

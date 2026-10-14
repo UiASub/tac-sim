@@ -71,10 +71,12 @@ def pipe_mask(image: np.ndarray) -> np.ndarray:
     return cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
 
 
-def pipe_guidance(mask: np.ndarray) -> tuple[str, float, float]:
+def pipe_guidance(mask: np.ndarray, track: float | None = None) -> tuple[str, float, float]:
     """Pure-pursuit style guidance from the downward image (image top = vehicle forward).
 
     Returns (status, heading error rad, lateral offset -1..1). Status is "follow", "end" or "lost".
+    track is the direction travelled so far as a bearing in the vehicle frame; when given, only pipe
+    within 115 degrees of it counts as ahead, so the vehicle cannot turn back along the leg it came from.
     """
     h, w = mask.shape
     ys, xs = np.nonzero(mask)
@@ -83,7 +85,8 @@ def pipe_guidance(mask: np.ndarray) -> tuple[str, float, float]:
     rx = xs - w / 2
     ry = h / 2 - ys  # up = forward
     lateral = float(np.clip(np.mean(rx[np.abs(ry) < h * 0.15]) / (w / 2), -1, 1)) if np.any(np.abs(ry) < h * 0.15) else 0.0
-    ahead = (np.hypot(rx, ry) > h * 0.3) & (ry > -h * 0.05)
+    ahead = (np.hypot(rx, ry) > h * 0.3) & (
+        ry > -h * 0.05 if track is None else np.abs(wrap(np.arctan2(rx, ry) - track)) < math.radians(115))
     if np.count_nonzero(ahead) < 80:
         return "end", 0.0, lateral
     return "follow", math.atan2(float(np.mean(rx[ahead])), float(np.mean(ry[ahead]))), lateral

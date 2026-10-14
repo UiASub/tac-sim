@@ -12,6 +12,7 @@ namespace TacSim.Editor
     public static class TacArenaSetup
     {
         public const string ArenaPath = "Assets/TacSim/Scenes/TacArena.unity";
+        const string StructurePrefab = "Assets/TacSim/Prefabs/UnderwaterStructure.prefab";
         const string AutomationMenu = "TAC/Automation server in Play mode (port 8765)";
 
         [MenuItem("TAC/Create TAC arena scene (replaces TacArena)")]
@@ -38,6 +39,8 @@ namespace TacSim.Editor
             var course = new GameObject("TAC course").AddComponent<TacCourse>();
             course.transform.position = new Vector3(0, -5f, 0); // pool floor surface
             course.seed = 1;
+            course.structureModel = AssetDatabase.LoadAssetAtPath<GameObject>(StructurePrefab);
+            if (course.structureModel == null) throw new System.Exception("Missing " + StructurePrefab);
 
             EditorSceneManager.SaveScene(scene);
             var scenes = EditorBuildSettings.scenes.Where(s => s.path != ArenaPath).ToList();
@@ -62,6 +65,18 @@ namespace TacSim.Editor
             if (report.summary.result != BuildResult.Succeeded)
                 throw new System.Exception($"Windows build failed: {report.summary.result}");
             Debug.Log("TAC_BUILD_SUCCEEDED");
+        }
+
+        // Opens the arena and presses Play. Also the way to start a session from a script, with the API on:
+        // Unity -batchmode -projectPath Unity -executeMethod TacSim.Editor.TacArenaSetup.PlayArena -automationPort 8765
+        [MenuItem("TAC/Play TAC arena")]
+        public static void PlayArena()
+        {
+            if (EditorApplication.isPlaying) return;
+            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            if (!File.Exists(ArenaPath)) CreateArena();
+            EditorSceneManager.OpenScene(ArenaPath, OpenSceneMode.Single);
+            EditorApplication.EnterPlaymode();
         }
 
         [MenuItem(AutomationMenu)]
