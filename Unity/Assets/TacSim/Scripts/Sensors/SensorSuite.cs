@@ -27,6 +27,7 @@ namespace TacSim
         public PressureSensor Pressure { get; private set; }
         public InertialSensor Imu { get; private set; }
         public ImagingSonar Sonar { get; private set; }
+        public HydrophoneSensor Hydrophone { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -108,6 +109,9 @@ namespace TacSim
             Sonar = Mount<ImagingSonar>("Sonoptix ECHO sonar", new Vector3(0, -0.08f, 0.27f), new Vector3(15, 0, 0),
                 sonar => sonar.model = "Sonoptix ECHO multibeam imaging sonar");
 
+            if (FindFirstObjectByType<OceanPipeline>() != null)
+                Hydrophone = Mount<HydrophoneSensor>("Hydrophone array", new Vector3(0,-.2f,0), Vector3.zero,
+                    sensor => sensor.model = "Simulated 30 kHz directional hydrophone array");
             vehicle.VehicleReset += ResetSensors;
             if (Array.IndexOf(args, "-noSensorNoise") >= 0) SetNoise(false);
             Debug.Log($"TAC_SENSORS_READY: {sensors.Count} sensors, seed {Seed}");
