@@ -34,7 +34,8 @@ namespace TacSim
 
             var face = GameObject.CreatePrimitive(PrimitiveType.Quad);
             face.name = "Marker face";
-            Object.Destroy(face.GetComponent<Collider>());
+            if (Application.isPlaying) Object.Destroy(face.GetComponent<Collider>());
+            else Object.DestroyImmediate(face.GetComponent<Collider>());
             face.transform.SetParent(root.transform, false);
             face.transform.localPosition = new Vector3(0, PlateThickness + 0.0005f, 0);
             // Quad faces -Z; tip it so it faces +Y with texture top towards local +Z.

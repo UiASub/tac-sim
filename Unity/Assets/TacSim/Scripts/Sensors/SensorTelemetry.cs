@@ -72,6 +72,15 @@ namespace TacSim
     }
 
     [Serializable]
+    public sealed class HydrophoneReading
+    {
+        public double time;
+        public bool detected;
+        public float frequency_khz, bearing_deg, elevation_deg, relative_level;
+        public int pulse_count;
+    }
+
+    [Serializable]
     public sealed class SensorReadings
     {
         public int seed;
@@ -80,6 +89,7 @@ namespace TacSim
         public DvlReading dvl;
         public PressureReading pressure;
         public SonarReading sonar;
+        public HydrophoneReading hydrophone;
     }
 
     [Serializable]
@@ -125,6 +135,12 @@ namespace TacSim
         public static SensorReadings Read(SensorSuite suite, bool sonarImage)
         {
             var readings = new SensorReadings { seed = suite.Seed, noise = suite.NoiseEnabled };
+            if (suite.Hydrophone is { } hydrophone)
+                readings.hydrophone = new HydrophoneReading {
+                    time=hydrophone.SampleTime, detected=hydrophone.Detected,
+                    frequency_khz=hydrophone.tunedFrequencyKhz, bearing_deg=hydrophone.Bearing,
+                    elevation_deg=hydrophone.Elevation, relative_level=hydrophone.Level, pulse_count=hydrophone.PulseCount
+                };
             if (suite.Imu is { } imu)
             {
                 Vector4 q = imu.AttitudeQuaternion;
@@ -239,6 +255,7 @@ namespace TacSim
                     case PressureSensor pressure: info[i].rate = pressure.rate; break;
                     case InertialSensor imu: info[i].rate = imu.rate; break;
                     case ImagingSonar sonar: info[i].rate = sonar.EffectivePingRate; break;
+                    case HydrophoneSensor _: info[i].rate = 20; break;
                 }
             }
             return info;
