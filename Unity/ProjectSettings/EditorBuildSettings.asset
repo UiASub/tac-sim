@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/TacSim/Scenes/TacArena.unity
     guid: f607b29cced686240a0f65bd58a7d055
+  - enabled: 1
+    path: Assets/teknologidagen_scene.unity
+    guid: cfe5f717c48017e4584054e48448b10b
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
