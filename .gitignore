@@ -64,3 +64,10 @@ __pycache__/
 /Unity/Assets/External/**
 !/Unity/Assets/External/**/
 !/Unity/Assets/External/**/*.meta
+
+# Teknologidagen lake meshes and textures (about 140 MB), rebuilt by TAC/Teknologidagen/Upgrade lake,
+# which runs by itself when the scene opens without them.
+/Unity/Assets/TacSim/Art/Structure/Split/
+/Unity/Assets/TacSim/Art/Structure/Split.meta
+/Unity/Assets/TacSim/Art/Teknologidagen/Generated/
+/Unity/Assets/TacSim/Art/Teknologidagen/Generated.meta

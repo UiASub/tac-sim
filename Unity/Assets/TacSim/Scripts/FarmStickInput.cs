@@ -109,12 +109,15 @@ namespace TacSim
             if(pilot!=null && pilot.ExternalControl) { Neutral(); return; }
             float precision=Held(6) ? .3f : 1f;
             float depth=string.IsNullOrEmpty(profile.depth) ? (Held(4)?1:0)-(Held(5)?1:0) : Axis(profile.depth,profile.invertDepth);
-            dive.vehicle.SetCommand(new Vector3(0,depth,Axis(profile.forward,profile.invertForward))*precision,
-                new Vector3(0,Axis(profile.turn,profile.invertTurn)*precision,0));
+            dive.vehicle.SetCommand(new Vector3(0,depth,Axis(profile.forward,profile.invertForward))*precision*dive.moveGain,
+                new Vector3(0,Axis(profile.turn,profile.invertTurn)*precision*dive.yawGain,0));
             owned=true;
-            if(Pressed(0) && assist!=null) { if(assist.Connected!=null) assist.Release(); else assist.Connect(assist.Candidate); }
+            if(Pressed(0) && assist!=null && assist.Active) { if(assist.Connected!=null) assist.Release(); else assist.Connect(assist.Candidate); }
             if(Pressed(1)) dive.diveCamera.GetComponent<PilotView>().CycleCamera();
-            if(assist!=null && assist.Connected!=null) assist.Turn(Axis(profile.valve,profile.invertValve),Time.deltaTime);
+            // Without the assist the valve stick turns the free torque tool; the pilot holds it on the handle.
+            float valve=Axis(profile.valve,profile.invertValve);
+            if(assist!=null && assist.Connected!=null) assist.Turn(valve,Time.deltaTime);
+            else if(dive.armEnabled && dive.vehicle.Armed) dive.Arm.NudgeWrist(valve,Time.deltaTime);
             if(Held(7))
             {
                 restartHeld+=Time.unscaledDeltaTime;
