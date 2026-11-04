@@ -9,6 +9,8 @@ namespace TacSim
         public PilotView view;
         public Light[] headlights;
         [Range(0.1f, 1)] public float precisionScale = 0.35f;
+        [Range(0.05f, 1)] public float moveScale = 1;
+        [Range(0.05f, 1)] public float yawScale = 1;
         public bool ExternalControl { get; set; }
         TacCourse course;
 
@@ -71,7 +73,7 @@ namespace TacSim
                 move *= precisionScale;
                 turn *= precisionScale;
             }
-            vehicle.SetCommand(move, turn);
+            vehicle.SetCommand(move * moveScale, turn * yawScale);
         }
 
         static float Axis(bool positive, bool negative) => (positive ? 1 : 0) - (negative ? 1 : 0);

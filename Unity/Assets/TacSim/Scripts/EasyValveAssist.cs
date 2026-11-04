@@ -9,6 +9,8 @@ namespace TacSim
     {
         public TeknologidagenDive dive;
         public float connectRange = 1.6f;
+        // Off by default: the pilot works the valve with the free torque tool. K toggles the assist.
+        public bool Active;
         public TacValve Connected { get; private set; }
         public TacValve Candidate { get; private set; }
         Vector3 mount;
@@ -49,6 +51,8 @@ namespace TacSim
             dive.vehicle.Body.linearVelocity=Vector3.zero; dive.vehicle.Body.angularVelocity=Vector3.zero;
             dive.vehicle.Body.constraints=RigidbodyConstraints.FreezeAll;
             dive.Arm.enabled=false;
+            valve.Hold(true);
+            dive.Arm.SetSocketKinematic(true);
             PoseArm();
             return true;
         }
@@ -69,15 +73,18 @@ namespace TacSim
         {
             if(Connected==null) return;
             Connected.Drive(Socket(Connected)+Connected.transform.up*10,-Connected.transform.up,Connected.transform.forward);
+            Connected.Hold(false);
             Connected=null;
             if(dive.vehicle.Body!=null) dive.vehicle.Body.constraints=constraints;
             dive.Arm.transform.localPosition=mount; dive.Arm.transform.localRotation=armRotation;
             dive.Arm.enabled=true;
+            dive.Arm.SetSocketKinematic(false);
             extension.enabled=false;
         }
         void Update()
         {
             if(!ready) return;
+            if(!Active) { Release(); Candidate=null; return; }
             if(Connected!=null && (!dive.armEnabled || !dive.vehicle.Armed)) Release();
             Candidate=null;
             float best=float.MaxValue;
@@ -104,6 +111,7 @@ namespace TacSim
             extension.enabled=true;
             extension.SetPosition(0,dive.vehicle.transform.TransformPoint(mount));
             extension.SetPosition(1,root.position);
+            dive.Arm.SyncSocket();
         }
         void OnDisable() { if(ready) Release(); }
         void OnDestroy() { if(dive!=null && dive.vehicle!=null) dive.vehicle.VehicleReset-=Release; }

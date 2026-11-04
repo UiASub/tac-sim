@@ -28,6 +28,7 @@ namespace TacSim.Editor
                 else if(action=="stop") EditorApplication.ExitPlaymode();
                 else if(action=="test") Test();
                 else if(action=="polish") Polish();
+                else if(action=="upgrade") TeknologidagenUpgrade.Run();
             }
             catch(Exception e) { File.WriteAllText(Result,e.ToString()); Debug.LogException(e); }
         }
@@ -100,11 +101,12 @@ namespace TacSim.Editor
             RenderSettings.fogColor=new Color(.035f,.14f,.15f); RenderSettings.fogDensity=.065f;
             view.pilotCamera.clearFlags=CameraClearFlags.SolidColor; view.pilotCamera.backgroundColor=RenderSettings.fogColor;
             view.pilotCamera.transform.SetPositionAndRotation(new Vector3(6,-5,-8),Quaternion.LookRotation(new Vector3(-6,-3,8)));
+            TeknologidagenUpgrade.Apply(dive,new System.Text.StringBuilder());
             EditorSceneManager.SaveScene(target); AssetDatabase.SaveAssets();
             var scenes=EditorBuildSettings.scenes.ToList();
             if(!scenes.Any(s=>s.path==ScenePath)) scenes.Add(new EditorBuildSettingsScene(ScenePath,true));
             EditorBuildSettings.scenes=scenes.ToArray();
-            File.WriteAllText(Result,"BUILT: 30x30x10m lake; structure prefab, ROV, 95 rocks, particles, silt.");
+            File.WriteAllText(Result,"BUILT: 80x80 m fjord basin, 10–15 m; structure prefab, ROV, boulders, eelgrass, kelp, marine snow.");
         }
         static Material Mat(string name,Color color)
         {
@@ -150,11 +152,11 @@ namespace TacSim.Editor
             {
                 dive.Randomize();
                 var p=dive.vehicle.Body.position;
-                Check(p.y>=-7 && p.y<=-3,"Depth out of range");
-                Check(Vector3.Distance(p,dive.structure.position)>3,"Overlapping spawn");
-                Check(Mathf.Abs(TeknologidagenDive.BoundsOf(dive.structure).min.y+9.98f)<.05f,"Structure not on bottom");
+                Check(p.y<=-3 && p.y>=dive.FloorAt(p)+1,"Depth out of range");
+                Check(Vector3.Distance(p,dive.structure.position)>10,"Spawn too close to the structure");
+                Check(Mathf.Abs(TeknologidagenDive.BoundsOf(dive.structure).min.y-dive.FloorAt(dive.structure.position))<.6f,"Structure not on bottom");
             }
-            Check(dive.Valves.Length==4,"Valve count="+dive.Valves.Length+"; meshes: "+string.Join(" | ",dive.structure.GetComponentsInChildren<MeshRenderer>(true).Select(r=>r.name)));
+            Check(dive.Valves.Length==1,"Valve count="+dive.Valves.Length);
             foreach(var valve in dive.Valves)
             {
                 valve.SetAngle(0);
@@ -168,7 +170,7 @@ namespace TacSim.Editor
                 valve.SetAngle(-30); Check(valve.angle==0,"Lower stop failed");
             }
             dive.Randomize();
-            File.WriteAllText(Result,"PASS: 100 spawn layouts; depth and bottom clearance; remote grip rejected; all four valves driven 0–90 with visible rotation and limits.");
+            File.WriteAllText(Result,"PASS: 100 spawn layouts on the sloping floor; depth and bottom clearance; remote grip rejected; wall valve driven 0–90 with the real handle turning and limits.");
         }
     }
 }

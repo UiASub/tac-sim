@@ -32,6 +32,11 @@ namespace TacSim
         public float TurnedByTool { get; private set; }
         public bool Engaged { get; private set; }
         public Vector3 ToolOffset { get; private set; }
+        // Physical mode: the handle is a hinged rigid body that only turns when something pushes it.
+        public bool Physical => handleBody != null;
+        public bool ToolContact => handleBody != null && Time.time - lastContact < .1f;
+        Rigidbody handleBody;
+        float friction, lastContact = -1;
         // Task: open the valve with the manipulator (ASSUMED: the booklet text does not give the target position).
         public bool Completed => IsOpen && TurnedByTool >= 5;
 
@@ -96,12 +101,95 @@ namespace TacSim
             return valve;
         }
 
+        // Drives an imported handle instead of the generated one: the pivot's local Y is the valve axis
+        // and its rotation is Euler(0, angle, 0), so place the handle under it at the current angle.
+        public void AttachHandle(Transform pivot)
+        {
+            handle = pivot;
+            SetAngle(angle);
+        }
+
+        // Hinges the attached handle to mount (a kinematic body on the valve frame) about the valve axis.
+        // The colliders on the handle decide what can push it; friction (N·m) is the torque needed to turn it.
+        public void MakePhysical(Rigidbody mount, float frictionTorque)
+        {
+            friction = frictionTorque;
+            handleBody = handle.gameObject.AddComponent<Rigidbody>();
+            handleBody.useGravity = false;
+            handleBody.mass = 1.2f;
+            handleBody.angularDamping = 1;
+            handleBody.interpolation = RigidbodyInterpolation.Interpolate;
+            handleBody.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+            handleBody.solverIterations = 20;
+            handleBody.solverVelocityIterations = 10;
+            handleBody.maxDepenetrationVelocity = .05f;
+            var hinge = handle.gameObject.AddComponent<HingeJoint>();
+            hinge.connectedBody = mount;
+            hinge.anchor = Vector3.zero;
+            hinge.axis = Vector3.up;
+            handle.gameObject.AddComponent<ContactProbe>().valve = this;
+        }
+
+        // Held: the handle follows SetAngle only (the easy-valve assist turns it directly).
+        public void Hold(bool held)
+        {
+            if (handleBody == null) return;
+            handleBody.isKinematic = held;
+            SetAngle(angle);
+        }
+
+        void FixedUpdate()
+        {
+            if (handleBody == null || handleBody.isKinematic) return;
+            // The angle follows the body; S and O are hard stops.
+            Vector3 bar = Quaternion.Inverse(transform.rotation) * (handleBody.rotation * Vector3.forward);
+            float measured = Mathf.Atan2(bar.x, bar.z) * Mathf.Rad2Deg;
+            Vector3 axis = transform.up;
+            float spin = Vector3.Dot(handleBody.angularVelocity, axis);
+            if (measured < 0 || measured > 90)
+            {
+                measured = Mathf.Clamp(measured, 0, 90);
+                handleBody.rotation = transform.rotation * Quaternion.Euler(0, measured, 0);
+                if (measured <= 0 ? spin < 0 : spin > 0) { handleBody.angularVelocity -= axis * spin; spin = 0; }
+            }
+            // Coulomb friction: the push has to exceed the friction torque before the handle moves.
+            Quaternion principal = handleBody.rotation * handleBody.inertiaTensorRotation;
+            Vector3 inertia = handleBody.inertiaTensor;
+            float about = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                Vector3 basis = Vector3.zero;
+                basis[i] = 1;
+                float c = Vector3.Dot(axis, principal * basis);
+                about += inertia[i] * c * c;
+            }
+            float stop = friction / Mathf.Max(about, 1e-6f) * Time.fixedDeltaTime;
+            handleBody.angularVelocity -= axis * (Mathf.Abs(spin) <= stop ? spin : Mathf.Sign(spin) * stop);
+            TurnedByTool += Mathf.Abs(measured - angle);
+            angle = measured;
+        }
+
+        internal void Touched() => lastContact = Time.time;
+
         public void SetAngle(float degrees)
         {
             angle = Mathf.Clamp(degrees, 0, 90);
             if (handle != null) handle.localRotation = Quaternion.Euler(0, angle, 0);
+            if (handleBody == null) return;
+            handleBody.rotation = handle.rotation;
+            if (handleBody.isKinematic) return;
+            handleBody.angularVelocity = Vector3.zero;
+            handleBody.linearVelocity = Vector3.zero;
         }
 
         void OnValidate() => SetAngle(angle);
+
+        // Sits on the handle body to hear its collisions; the handle ignores the structure, so any contact is the tool or the ROV.
+        sealed class ContactProbe : MonoBehaviour
+        {
+            public TacValve valve;
+            void OnCollisionEnter() => valve.Touched();
+            void OnCollisionStay() => valve.Touched();
+        }
     }
 }

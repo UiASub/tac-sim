@@ -32,6 +32,8 @@ namespace TacSim.Editor
             var body=dive.vehicle.Body;
             var position=body.position; var rotation=body.rotation; var oldConstraints=body.constraints;
             var angles=dive.Valves.Select(v=>v.angle).ToArray();
+            bool wasActive=assist.Active;
+            assist.Active=true;
             try
             {
                 if(dive.diveCamera.GetComponent<PilotView>().enabled) throw new System.Exception("Old HUD still enabled");
@@ -58,7 +60,7 @@ namespace TacSim.Editor
             catch(System.Exception e) { File.WriteAllText("Temp/assist-test.txt",e.ToString()); }
             finally
             {
-                assist.Release(); body.position=position; body.rotation=rotation; dive.vehicle.transform.SetPositionAndRotation(position,rotation);
+                assist.Release(); assist.Active=wasActive; body.position=position; body.rotation=rotation; dive.vehicle.transform.SetPositionAndRotation(position,rotation);
                 body.linearVelocity=Vector3.zero; body.angularVelocity=Vector3.zero;
                 for(int i=0;i<angles.Length;i++) dive.Valves[i].SetAngle(angles[i]);
                 Physics.SyncTransforms();
